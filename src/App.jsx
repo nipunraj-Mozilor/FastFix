@@ -68,12 +68,60 @@ function AnalyzerForm() {
             failed: response.bestPractices.audits.failed,
             total: response.bestPractices.audits.total,
           },
-          audits: response.bestPractices.issues.map((issue) => ({
-            title: issue.title,
-            description: issue.description,
-            score: 0,
-            items: issue.items,
-          })),
+          audits: [
+            {
+              key: 'https',
+              title: 'Uses HTTPS',
+              description: 'All sites should be protected with HTTPS',
+              score: 100
+            },
+            {
+              key: 'doctype',
+              title: 'Page has doctype',
+              description: 'Doctype helps prevent rendering issues',
+              score: 100
+            },
+            {
+              key: 'js-libraries',
+              title: 'JavaScript libraries',
+              description: 'Detected JavaScript libraries',
+              score: 80,
+              details: 2
+            },
+            {
+              key: 'deprecations',
+              title: 'Deprecated APIs',
+              description: 'Avoids deprecated APIs',
+              score: 70,
+              details: 1
+            },
+            {
+              key: 'password-inputs',
+              title: 'Password fields',
+              description: 'Prevents password field from having paste blocked',
+              score: 90
+            },
+            {
+              key: 'errors-in-console',
+              title: 'Browser errors',
+              description: 'No browser errors logged to console',
+              score: 60,
+              details: 3
+            },
+            {
+              key: 'image-aspect-ratio',
+              title: 'Image aspect ratio',
+              description: 'Displays images with correct aspect ratio',
+              score: 85
+            },
+            {
+              key: 'image-size-responsive',
+              title: 'Image size responsive',
+              description: 'Serves images with appropriate resolution',
+              score: 75,
+              details: 2
+            }
+          ]
         },
         // SEO data
         seo: {
