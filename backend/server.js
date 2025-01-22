@@ -172,13 +172,153 @@ async function analyzePage(url, chrome) {
       return null;
     }
 
+    // Extract performance metrics
+    const performanceMetrics = {
+      score: (results.categories.performance?.score || 0) * 100,
+      metrics: {
+        fcp: {
+          score: results.audits["first-contentful-paint"]?.score * 100 || 0,
+          value: results.audits["first-contentful-paint"]?.numericValue || 0,
+          displayValue:
+            results.audits["first-contentful-paint"]?.displayValue || "N/A",
+        },
+        lcp: {
+          score: results.audits["largest-contentful-paint"]?.score * 100 || 0,
+          value: results.audits["largest-contentful-paint"]?.numericValue || 0,
+          displayValue:
+            results.audits["largest-contentful-paint"]?.displayValue || "N/A",
+        },
+        tbt: {
+          score: results.audits["total-blocking-time"]?.score * 100 || 0,
+          value: results.audits["total-blocking-time"]?.numericValue || 0,
+          displayValue:
+            results.audits["total-blocking-time"]?.displayValue || "N/A",
+        },
+        cls: {
+          score: results.audits["cumulative-layout-shift"]?.score * 100 || 0,
+          value: results.audits["cumulative-layout-shift"]?.numericValue || 0,
+          displayValue:
+            results.audits["cumulative-layout-shift"]?.displayValue || "N/A",
+        },
+        si: {
+          score: results.audits["speed-index"]?.score * 100 || 0,
+          value: results.audits["speed-index"]?.numericValue || 0,
+          displayValue: results.audits["speed-index"]?.displayValue || "N/A",
+        },
+        tti: {
+          score: results.audits["interactive"]?.score * 100 || 0,
+          value: results.audits["interactive"]?.numericValue || 0,
+          displayValue: results.audits["interactive"]?.displayValue || "N/A",
+        },
+      },
+    };
+
+    // Extract accessibility metrics
+    const accessibilityMetrics = {
+      score: (results.categories.accessibility?.score || 0) * 100,
+      details: {
+        passed:
+          results.categories.accessibility?.auditRefs?.filter(
+            (audit) => results.audits[audit.id]?.score === 1
+          ).length || 0,
+        failed:
+          results.categories.accessibility?.auditRefs?.filter(
+            (audit) => results.audits[audit.id]?.score === 0
+          ).length || 0,
+        total: results.categories.accessibility?.auditRefs?.length || 0,
+      },
+      audits: {
+        contrast: {
+          score: results.audits["color-contrast"]?.score * 100 || 0,
+          details:
+            results.audits["color-contrast"]?.details?.items?.length || 0,
+          title: "Color Contrast",
+          description: results.audits["color-contrast"]?.description || "",
+        },
+        headings: {
+          score: results.audits["heading-order"]?.score * 100 || 0,
+          details: results.audits["heading-order"]?.details?.items?.length || 0,
+          title: "Headings",
+          description: results.audits["heading-order"]?.description || "",
+        },
+        aria: {
+          score:
+            (results.audits["aria-required-attr"]?.score * 100 +
+              results.audits["aria-roles"]?.score * 100) /
+              2 || 0,
+          details:
+            (results.audits["aria-required-attr"]?.details?.items?.length ||
+              0) + (results.audits["aria-roles"]?.details?.items?.length || 0),
+          title: "ARIA Labels",
+          description: "ARIA attributes and roles usage",
+        },
+        images: {
+          score: results.audits["image-alt"]?.score * 100 || 0,
+          details: results.audits["image-alt"]?.details?.items?.length || 0,
+          title: "Image Alts",
+          description: results.audits["image-alt"]?.description || "",
+        },
+        links: {
+          score: results.audits["link-name"]?.score * 100 || 0,
+          details: results.audits["link-name"]?.details?.items?.length || 0,
+          title: "Link Names",
+          description: results.audits["link-name"]?.description || "",
+        },
+        actions: {
+          score:
+            (results.audits["custom-controls-labels"]?.score * 100 +
+              results.audits["custom-controls-roles"]?.score * 100) /
+              2 || 0,
+          details:
+            (results.audits["custom-controls-labels"]?.details?.items?.length ||
+              0) +
+            (results.audits["custom-controls-roles"]?.details?.items?.length ||
+              0),
+          title: "Actions",
+          description: "Interactive elements accessibility",
+        },
+      },
+    };
+
+    // Extract best practices metrics
+    const bestPracticesMetrics = {
+      score: (results.categories["best-practices"]?.score || 0) * 100,
+      details: {
+        passed:
+          results.categories["best-practices"]?.auditRefs?.filter(
+            (audit) => results.audits[audit.id]?.score === 1
+          ).length || 0,
+        failed:
+          results.categories["best-practices"]?.auditRefs?.filter(
+            (audit) => results.audits[audit.id]?.score === 0
+          ).length || 0,
+        total: results.categories["best-practices"]?.auditRefs?.length || 0,
+      },
+    };
+
+    // Extract SEO metrics
+    const seoMetrics = {
+      score: (results.categories.seo?.score || 0) * 100,
+      details: {
+        passed:
+          results.categories.seo?.auditRefs?.filter(
+            (audit) => results.audits[audit.id]?.score === 1
+          ).length || 0,
+        failed:
+          results.categories.seo?.auditRefs?.filter(
+            (audit) => results.audits[audit.id]?.score === 0
+          ).length || 0,
+        total: results.categories.seo?.auditRefs?.length || 0,
+      },
+    };
+
     return {
       url,
       scores: {
-        performance: (results.categories.performance?.score || 0) * 100,
-        accessibility: (results.categories.accessibility?.score || 0) * 100,
-        bestPractices: (results.categories["best-practices"]?.score || 0) * 100,
-        seo: (results.categories.seo?.score || 0) * 100,
+        performance: performanceMetrics,
+        accessibility: accessibilityMetrics,
+        bestPractices: bestPracticesMetrics,
+        seo: seoMetrics,
       },
     };
   } catch (error) {
