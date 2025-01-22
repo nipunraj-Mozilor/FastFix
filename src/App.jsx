@@ -194,7 +194,7 @@ function App() {
       ...(results.accessibility?.issues || []),
       ...(results.bestPractices?.issues || []),
       ...(results.seo?.issues || []),
-    ];
+    ].sort((a, b) => parseFloat(b.impact) - parseFloat(a.impact));
 
     const filteredIssues =
       selectedCategory === "all"
@@ -216,28 +216,53 @@ function App() {
       }
     };
 
-    const renderIssueDetails = (issue) => {
-      if (!issue.items || issue.items.length === 0) return null;
+    const getImpactLabel = (impact, type) => {
+      const impactNum = parseFloat(impact);
 
-      return (
-        <div className='mt-2 space-y-2'>
-          {issue.items.map((item, index) => (
-            <div key={index} className='bg-gray-50 p-3 rounded-lg text-sm'>
-              {Object.entries(item).map(([key, value]) => {
-                if (typeof value === "object" || key === "type") return null;
-                return (
-                  <div key={key} className='flex items-start gap-2'>
-                    <span className='font-medium text-gray-700 min-w-[100px]'>
-                      {key.charAt(0).toUpperCase() + key.slice(1)}:
-                    </span>
-                    <span className='text-gray-600'>{value}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      );
+      // Different thresholds based on category
+      const thresholds = {
+        performance: {
+          critical: 25, // Performance issues have higher impact thresholds
+          high: 15,
+          medium: 8,
+        },
+        accessibility: {
+          critical: 15, // Accessibility issues often have medium-range impacts
+          high: 10,
+          medium: 5,
+        },
+        "best-practices": {
+          critical: 20, // Best practices can significantly affect overall quality
+          high: 12,
+          medium: 6,
+        },
+        seo: {
+          critical: 18, // SEO issues can have varying levels of impact
+          high: 10,
+          medium: 5,
+        },
+      };
+
+      const categoryThresholds = thresholds[type] || thresholds.performance;
+
+      if (impactNum >= categoryThresholds.critical) return "Critical";
+      if (impactNum >= categoryThresholds.high) return "High";
+      if (impactNum >= categoryThresholds.medium) return "Medium";
+      return "Low";
+    };
+
+    const getImpactColor = (impact, type) => {
+      const label = getImpactLabel(impact, type);
+      switch (label) {
+        case "Critical":
+          return "bg-red-100 text-red-800";
+        case "High":
+          return "bg-orange-100 text-orange-800";
+        case "Medium":
+          return "bg-yellow-100 text-yellow-800";
+        default:
+          return "bg-green-100 text-green-800";
+      }
     };
 
     return (
@@ -247,76 +272,105 @@ function App() {
         <div className='flex gap-2 mb-6'>
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-              ${
-                selectedCategory === "all"
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              selectedCategory === "all"
+                ? "bg-gray-800 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
           >
             All Issues
           </button>
           {["performance", "accessibility", "best-practices", "seo"].map(
-            (category) => (
+            (type) => (
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                ${
-                  selectedCategory === category
-                    ? "bg-gray-900 text-white"
+                key={type}
+                onClick={() => setSelectedCategory(type)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedCategory === type
+                    ? "bg-gray-800 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+                {type.charAt(0).toUpperCase() + type.slice(1)}
               </button>
             )
           )}
         </div>
 
         <div className='space-y-6'>
-          {filteredIssues.length === 0 ? (
-            <p className='text-gray-600'>
-              No issues found for the selected category.
-            </p>
-          ) : (
-            filteredIssues.map((issue, index) => (
-              <div
-                key={index}
-                className='border-b border-gray-200 last:border-0 pb-6 last:pb-0'
-              >
-                <div className='flex items-start justify-between'>
-                  <div>
-                    <h3 className='text-lg font-semibold text-gray-800'>
-                      {issue.title}
-                    </h3>
-                    <p
-                      className={`text-sm ${getTypeColor(
-                        issue.type
-                      )} font-medium mt-1`}
-                    >
+          {filteredIssues.map((issue, index) => (
+            <div
+              key={index}
+              className='border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow'
+            >
+              <div className='flex items-start justify-between mb-3'>
+                <div>
+                  <div className='flex items-center gap-2 mb-1'>
+                    <span className={`font-medium ${getTypeColor(issue.type)}`}>
                       {issue.type.charAt(0).toUpperCase() + issue.type.slice(1)}
-                    </p>
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${getImpactColor(
+                        issue.impact,
+                        issue.type
+                      )}`}
+                    >
+                      {getImpactLabel(issue.impact, issue.type)} Impact (
+                      {issue.impact}%)
+                    </span>
                   </div>
-                  <div
-                    className='px-3 py-1 rounded-full text-sm font-medium'
-                    style={{
-                      backgroundColor: `${getScoreColor(issue.score)}15`,
-                      color: getScoreColor(issue.score),
-                    }}
-                  >
-                    Score:{" "}
-                    {typeof issue.score === "number"
-                      ? Math.round(issue.score)
-                      : 0}
-                    %
+                  <h3 className='text-lg font-semibold text-gray-800'>
+                    {issue.title}
+                  </h3>
+                </div>
+                <div
+                  className='w-12 h-12 rounded-full flex items-center justify-center text-sm font-medium text-white'
+                  style={{ backgroundColor: getScoreColor(issue.score / 100) }}
+                >
+                  {Math.round(issue.score)}
+                </div>
+              </div>
+
+              <p className='text-gray-600 mb-4'>{issue.description}</p>
+
+              {issue.recommendations && issue.recommendations.length > 0 && (
+                <div className='mt-4'>
+                  <h4 className='font-medium text-gray-800 mb-2'>
+                    Recommendations:
+                  </h4>
+                  <div className='space-y-3'>
+                    {issue.recommendations.map((rec, idx) => (
+                      <div key={idx} className='bg-gray-50 rounded-lg p-3'>
+                        {rec.selector && (
+                          <div className='text-sm mb-1'>
+                            <span className='font-medium text-gray-700'>
+                              Element:{" "}
+                            </span>
+                            <code className='bg-gray-100 px-1 py-0.5 rounded'>
+                              {rec.selector}
+                            </code>
+                          </div>
+                        )}
+                        {rec.snippet && (
+                          <div className='text-sm mb-1'>
+                            <span className='font-medium text-gray-700'>
+                              Code:{" "}
+                            </span>
+                            <code className='bg-gray-100 px-1 py-0.5 rounded'>
+                              {rec.snippet}
+                            </code>
+                          </div>
+                        )}
+                        <p className='text-sm text-gray-600'>
+                          {rec.suggestion}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <p className='mt-2 text-gray-600'>{issue.description}</p>
-                {renderIssueDetails(issue)}
-              </div>
-            ))
-          )}
+              )}
+            </div>
+          ))}
         </div>
       </div>
     );

@@ -148,7 +148,21 @@ async function analyzePage(page, url) {
       const issues = [];
       const auditRefs = categoryData.auditRefs || [];
 
-      for (const ref of auditRefs) {
+      // Sort audit refs by weight and score to prioritize most impactful issues
+      const sortedRefs = auditRefs.sort((a, b) => {
+        const scoreA = audits[a.id].score || 0;
+        const scoreB = audits[b.id].score || 0;
+        const weightA = a.weight || 0;
+        const weightB = b.weight || 0;
+
+        // Calculate impact (lower score + higher weight = higher impact)
+        const impactA = (1 - scoreA) * weightA;
+        const impactB = (1 - scoreB) * weightB;
+
+        return impactB - impactA;
+      });
+
+      for (const ref of sortedRefs) {
         const audit = audits[ref.id];
         if (audit.score !== 1 && audit.score !== null) {
           const issue = {
@@ -156,13 +170,33 @@ async function analyzePage(page, url) {
             title: audit.title,
             description: audit.description,
             score: audit.score * 100,
+            impact: ((1 - audit.score) * (ref.weight || 1) * 100).toFixed(1),
+            weight: ref.weight,
             items: audit.details?.items || [],
+            recommendations:
+              audit.details?.items
+                ?.map((item) => ({
+                  snippet: item.node?.snippet || item.source || "",
+                  selector: item.node?.selector || "",
+                  suggestion: item.suggestion || audit.description,
+                }))
+                .filter((rec) => rec.snippet || rec.selector)
+                .slice(0, 3) || [],
           };
           issues.push(issue);
         }
       }
 
-      return issues;
+      // Only return top issues that contribute to 80% of the score drop
+      const totalImpact = issues.reduce(
+        (sum, issue) => sum + parseFloat(issue.impact),
+        0
+      );
+      let cumulativeImpact = 0;
+      return issues.filter((issue) => {
+        cumulativeImpact += parseFloat(issue.impact);
+        return cumulativeImpact <= totalImpact * 0.8;
+      });
     };
 
     const performance = {
