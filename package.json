@@ -7,23 +7,22 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "unlighthouse": "npx @unlighthouse/cli --site localhost:5173"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@unlighthouse/core": "^0.15.0",
+    "axios": "^1.7.9",
     "chrome-launcher": "^1.1.2",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
     "lighthouse": "^12.3.0",
-    "puppeteer": "^24.1.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@unlighthouse/cli": "^0.15.0",
-    "@unlighthouse/vite": "^0.10.6",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.17.0",
@@ -34,5 +33,6 @@
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.5"
-  }
+  },
+  "proxy": "http://localhost:3000"
 }
