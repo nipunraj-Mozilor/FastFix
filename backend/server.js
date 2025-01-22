@@ -131,204 +131,122 @@ async function discoverPages(url, maxPages = 100) {
   return discovered;
 }
 
-async function analyzePage(url, chrome) {
+async function analyzePage(page, url) {
   try {
-    const options = {
-      logLevel: "silent",
+    const result = await lighthouse(url, {
+      port: new URL(page.browser().wsEndpoint()).port,
       output: "json",
+      logLevel: "error",
       onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
-      port: chrome.port,
-      maxWaitForLoad: 15000,
-      throttling: {
-        cpuSlowdownMultiplier: 1,
-        requestLatencyMs: 0,
-        downloadThroughputKbps: 0,
-        uploadThroughputKbps: 0,
-      },
-      settings: {
-        formFactor: "desktop",
-        screenEmulation: {
-          mobile: false,
-          width: 1350,
-          height: 940,
-          deviceScaleFactor: 1,
-          disabled: false,
-        },
-        skipAudits: ["uses-http2", "uses-long-cache-ttl", "canonical"],
-        emulatedUserAgent:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
+    });
+
+    const report = JSON.parse(result.report);
+    const audits = report.audits;
+    const categories = report.categories;
+
+    const extractIssues = (categoryName, categoryData) => {
+      const issues = [];
+      const auditRefs = categoryData.auditRefs || [];
+
+      for (const ref of auditRefs) {
+        const audit = audits[ref.id];
+        if (audit.score !== 1 && audit.score !== null) {
+          const issue = {
+            type: categoryName.toLowerCase(),
+            title: audit.title,
+            description: audit.description,
+            score: audit.score * 100,
+            items: audit.details?.items || [],
+          };
+          issues.push(issue);
+        }
+      }
+
+      return issues;
     };
 
-    const runnerResult = await lighthouse(url, options);
-    if (!runnerResult || !runnerResult.report) {
-      console.log(`Skipping ${url} due to empty result`);
-      return null;
-    }
-
-    const results = JSON.parse(runnerResult.report);
-    if (!results.categories) {
-      console.log(`Skipping ${url} due to invalid results format`);
-      return null;
-    }
-
-    // Extract performance metrics
-    const performanceMetrics = {
-      score: (results.categories.performance?.score || 0) * 100,
+    const performance = {
+      score: categories.performance.score * 100,
       metrics: {
         fcp: {
-          score: results.audits["first-contentful-paint"]?.score * 100 || 0,
-          value: results.audits["first-contentful-paint"]?.numericValue || 0,
-          displayValue:
-            results.audits["first-contentful-paint"]?.displayValue || "N/A",
+          score: audits["first-contentful-paint"].score * 100,
+          value: audits["first-contentful-paint"].numericValue,
         },
         lcp: {
-          score: results.audits["largest-contentful-paint"]?.score * 100 || 0,
-          value: results.audits["largest-contentful-paint"]?.numericValue || 0,
-          displayValue:
-            results.audits["largest-contentful-paint"]?.displayValue || "N/A",
+          score: audits["largest-contentful-paint"].score * 100,
+          value: audits["largest-contentful-paint"].numericValue,
         },
         tbt: {
-          score: results.audits["total-blocking-time"]?.score * 100 || 0,
-          value: results.audits["total-blocking-time"]?.numericValue || 0,
-          displayValue:
-            results.audits["total-blocking-time"]?.displayValue || "N/A",
+          score: audits["total-blocking-time"].score * 100,
+          value: audits["total-blocking-time"].numericValue,
         },
         cls: {
-          score: results.audits["cumulative-layout-shift"]?.score * 100 || 0,
-          value: results.audits["cumulative-layout-shift"]?.numericValue || 0,
-          displayValue:
-            results.audits["cumulative-layout-shift"]?.displayValue || "N/A",
+          score: audits["cumulative-layout-shift"].score * 100,
+          value: audits["cumulative-layout-shift"].numericValue,
         },
         si: {
-          score: results.audits["speed-index"]?.score * 100 || 0,
-          value: results.audits["speed-index"]?.numericValue || 0,
-          displayValue: results.audits["speed-index"]?.displayValue || "N/A",
+          score: audits["speed-index"].score * 100,
+          value: audits["speed-index"].numericValue,
         },
         tti: {
-          score: results.audits["interactive"]?.score * 100 || 0,
-          value: results.audits["interactive"]?.numericValue || 0,
-          displayValue: results.audits["interactive"]?.displayValue || "N/A",
+          score: audits["interactive"].score * 100,
+          value: audits["interactive"].numericValue,
         },
       },
+      issues: extractIssues("performance", categories.performance),
     };
 
-    // Extract accessibility metrics
-    const accessibilityMetrics = {
-      score: (results.categories.accessibility?.score || 0) * 100,
-      details: {
-        passed:
-          results.categories.accessibility?.auditRefs?.filter(
-            (audit) => results.audits[audit.id]?.score === 1
-          ).length || 0,
-        failed:
-          results.categories.accessibility?.auditRefs?.filter(
-            (audit) => results.audits[audit.id]?.score === 0
-          ).length || 0,
-        total: results.categories.accessibility?.auditRefs?.length || 0,
-      },
+    const accessibility = {
+      score: categories.accessibility.score * 100,
       audits: {
-        contrast: {
-          score: results.audits["color-contrast"]?.score * 100 || 0,
-          details:
-            results.audits["color-contrast"]?.details?.items?.length || 0,
-          title: "Color Contrast",
-          description: results.audits["color-contrast"]?.description || "",
-        },
-        headings: {
-          score: results.audits["heading-order"]?.score * 100 || 0,
-          details: results.audits["heading-order"]?.details?.items?.length || 0,
-          title: "Headings",
-          description: results.audits["heading-order"]?.description || "",
-        },
-        aria: {
-          score:
-            (results.audits["aria-required-attr"]?.score * 100 +
-              results.audits["aria-roles"]?.score * 100) /
-              2 || 0,
-          details:
-            (results.audits["aria-required-attr"]?.details?.items?.length ||
-              0) + (results.audits["aria-roles"]?.details?.items?.length || 0),
-          title: "ARIA Labels",
-          description: "ARIA attributes and roles usage",
-        },
-        images: {
-          score: results.audits["image-alt"]?.score * 100 || 0,
-          details: results.audits["image-alt"]?.details?.items?.length || 0,
-          title: "Image Alts",
-          description: results.audits["image-alt"]?.description || "",
-        },
-        links: {
-          score: results.audits["link-name"]?.score * 100 || 0,
-          details: results.audits["link-name"]?.details?.items?.length || 0,
-          title: "Link Names",
-          description: results.audits["link-name"]?.description || "",
-        },
-        actions: {
-          score:
-            (results.audits["custom-controls-labels"]?.score * 100 +
-              results.audits["custom-controls-roles"]?.score * 100) /
-              2 || 0,
-          details:
-            (results.audits["custom-controls-labels"]?.details?.items?.length ||
-              0) +
-            (results.audits["custom-controls-roles"]?.details?.items?.length ||
-              0),
-          title: "Actions",
-          description: "Interactive elements accessibility",
-        },
+        passed: categories.accessibility.auditRefs.filter(
+          (ref) => audits[ref.id].score === 1
+        ).length,
+        failed: categories.accessibility.auditRefs.filter(
+          (ref) => audits[ref.id].score !== 1 && audits[ref.id].score !== null
+        ).length,
+        total: categories.accessibility.auditRefs.length,
       },
+      issues: extractIssues("accessibility", categories.accessibility),
     };
 
-    // Extract best practices metrics
-    const bestPracticesMetrics = {
-      score: (results.categories["best-practices"]?.score || 0) * 100,
-      details: {
-        passed:
-          results.categories["best-practices"]?.auditRefs?.filter(
-            (audit) => results.audits[audit.id]?.score === 1
-          ).length || 0,
-        failed:
-          results.categories["best-practices"]?.auditRefs?.filter(
-            (audit) => results.audits[audit.id]?.score === 0
-          ).length || 0,
-        total: results.categories["best-practices"]?.auditRefs?.length || 0,
+    const bestPractices = {
+      score: categories["best-practices"].score * 100,
+      audits: {
+        passed: categories["best-practices"].auditRefs.filter(
+          (ref) => audits[ref.id].score === 1
+        ).length,
+        failed: categories["best-practices"].auditRefs.filter(
+          (ref) => audits[ref.id].score !== 1 && audits[ref.id].score !== null
+        ).length,
+        total: categories["best-practices"].auditRefs.length,
       },
+      issues: extractIssues("best-practices", categories["best-practices"]),
     };
 
-    // Extract SEO metrics
-    const seoMetrics = {
-      score: (results.categories.seo?.score || 0) * 100,
-      details: {
-        passed:
-          results.categories.seo?.auditRefs?.filter(
-            (audit) => results.audits[audit.id]?.score === 1
-          ).length || 0,
-        failed:
-          results.categories.seo?.auditRefs?.filter(
-            (audit) => results.audits[audit.id]?.score === 0
-          ).length || 0,
-        total: results.categories.seo?.auditRefs?.length || 0,
+    const seo = {
+      score: categories.seo.score * 100,
+      audits: {
+        passed: categories.seo.auditRefs.filter(
+          (ref) => audits[ref.id].score === 1
+        ).length,
+        failed: categories.seo.auditRefs.filter(
+          (ref) => audits[ref.id].score !== 1 && audits[ref.id].score !== null
+        ).length,
+        total: categories.seo.auditRefs.length,
       },
+      issues: extractIssues("seo", categories.seo),
     };
 
     return {
-      url,
-      scores: {
-        performance: performanceMetrics,
-        accessibility: accessibilityMetrics,
-        bestPractices: bestPracticesMetrics,
-        seo: seoMetrics,
-      },
+      performance,
+      accessibility,
+      bestPractices,
+      seo,
     };
   } catch (error) {
-    if (
-      !error.message.includes("LanternError") &&
-      !error.message.includes("PROTOCOL_TIMEOUT")
-    ) {
-      console.error(`Failed to analyze ${url}:`, error.message);
-    }
-    return null;
+    console.error("Error analyzing page:", error);
+    throw error;
   }
 }
 
@@ -350,32 +268,43 @@ async function scanWebsite(url, sendProgress) {
     routes.push(url);
   }
 
-  // Launch a single Chrome instance for all analyses
-  const chrome = await chromeLauncher.launch({
-    chromeFlags: [
-      "--headless",
-      "--disable-gpu",
+  // Launch browser for analysis
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: [
       "--no-sandbox",
+      "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--disable-gpu",
+      "--window-size=1920x1080",
     ],
   });
 
   try {
-    for (const route of routes) {
-      const result = await analyzePage(route, chrome);
-      if (result) {
-        scannedUrls.push(result);
-        pagesScanned++;
+    const page = await browser.newPage();
+    await page.setDefaultNavigationTimeout(30000);
 
-        sendProgress({
-          pagesScanned,
-          totalPages: totalPages || 1,
-          scannedUrls: scannedUrls.map((u) => u.url),
-        });
+    for (const route of routes) {
+      try {
+        const result = await analyzePage(page, route);
+        if (result) {
+          scannedUrls.push({ url: route, scores: result });
+          pagesScanned++;
+
+          sendProgress({
+            pagesScanned,
+            totalPages: totalPages || 1,
+            scannedUrls: scannedUrls.map((u) => u.url),
+          });
+        }
+      } catch (error) {
+        console.error(`Error analyzing ${route}:`, error);
+        // Continue with next route even if current one fails
       }
     }
   } finally {
-    await chrome.kill();
+    await browser.close();
   }
 
   return {
@@ -409,16 +338,16 @@ app.post("/analyze", async (req, res) => {
     const scanResults = await scanWebsite(url, sendProgress);
 
     // Return the final results
-    const mainScores = scanResults.urls[0]?.scores || {
-      performance: 0,
-      accessibility: 0,
-      bestPractices: 0,
-      seo: 0,
+    const mainResults = scanResults.urls[0]?.scores || {
+      performance: { score: 0 },
+      accessibility: { score: 0 },
+      bestPractices: { score: 0 },
+      seo: { score: 0 },
     };
 
     res.write(
       `data: ${JSON.stringify({
-        ...mainScores,
+        ...mainResults,
         scanStats: {
           pagesScanned: scanResults.stats.pagesScanned,
           totalPages: scanResults.stats.totalPages,
