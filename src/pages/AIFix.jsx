@@ -13,12 +13,9 @@ function AIFix() {
     scanStats: { pagesScanned: 0, scannedUrls: [] },
   };
 
-  const [fixingStatus, setFixingStatus] = useState({});
-  const [fixedIssues, setFixedIssues] = useState({});
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [fixSuggestions, setFixSuggestions] = useState({});
   const [loadingStates, setLoadingStates] = useState({});
-  const [validationResults, setValidationResults] = useState({});
   const [error, setError] = useState(null);
   const [scannedElements, setScannedElements] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -61,44 +58,6 @@ function AIFix() {
       fetchFixSuggestions();
     }
   }, [issues]);
-
-  // Step 4 & 5: Apply and Validate Fix
-  const handleApplyFix = async (issue, suggestion) => {
-    const issueKey = issue.title;
-    try {
-      // Start fixing
-      setFixingStatus((prev) => ({ ...prev, [issueKey]: true }));
-      setError(null);
-
-      // Apply the fix
-      const appliedFix = await applyFix(issue, suggestion);
-
-      // Validate the fix
-      const validationResult = await validateFix(issue, appliedFix);
-
-      // Update states based on validation
-      if (validationResult.success) {
-        setFixedIssues((prev) => ({ ...prev, [issueKey]: true }));
-        setValidationResults((prev) => ({
-          ...prev,
-          [issueKey]: { status: "success", message: validationResult.message },
-        }));
-      } else {
-        setValidationResults((prev) => ({
-          ...prev,
-          [issueKey]: { status: "error", message: validationResult.message },
-        }));
-      }
-    } catch (err) {
-      setError(err.message);
-      setValidationResults((prev) => ({
-        ...prev,
-        [issueKey]: { status: "error", message: err.message },
-      }));
-    } finally {
-      setFixingStatus((prev) => ({ ...prev, [issueKey]: false }));
-    }
-  };
 
   // Group issues by DOM element
   const groupedIssues = issues.reduce((acc, issue) => {
@@ -210,17 +169,6 @@ function AIFix() {
         yPos += 10;
       }
 
-      // Add validation results if available
-      if (validationResults[issue.title]) {
-        const validation = validationResults[issue.title];
-        const validationText =
-          typeof validation === "string"
-            ? validation
-            : validation.message || "Validation completed";
-        doc.text(`Validation Result: ${validationText}`, 30, yPos);
-        yPos += 15;
-      }
-
       // Add some spacing between issues
       yPos += 5;
     });
@@ -237,10 +185,10 @@ function AIFix() {
           <div className='flex items-center gap-4'>
             <button
               onClick={() => navigate("/")}
-              className='p-2 hover:bg-gray-200 rounded-lg transition-colors'
+              className='p-2 rounded-lg'
             >
               <svg
-                className='w-6 h-6 text-gray-600'
+                className='w-6 h-6 text-white'
                 fill='none'
                 stroke='currentColor'
                 viewBox='0 0 24 24'
@@ -254,10 +202,10 @@ function AIFix() {
               </svg>
             </button>
             <div>
-              <h1 className='text-2xl font-bold text-gray-800'>
+              <h1 className='text-2xl font-bold text-gray-800 text-left'>
                 DOM Element Analysis
               </h1>
-              <p className='text-gray-600'>
+              <p className='text-gray-600 text-left'>
                 Analyzing {websiteUrl || "website"}
               </p>
             </div>
@@ -265,7 +213,7 @@ function AIFix() {
 
           <button
             onClick={generatePDF}
-            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center gap-2'
+            className='bg-black text-white px-4 py-2 rounded hover:bg-gray-800 flex items-center gap-2'
           >
             <svg
               xmlns='http://www.w3.org/2000/svg'
@@ -336,7 +284,7 @@ function AIFix() {
               <div className='space-y-2'>
                 <button
                   onClick={() => setSelectedCategory("all")}
-                  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left focus:outline-none ${
                     selectedCategory === "all"
                       ? "bg-gray-800 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -348,7 +296,7 @@ function AIFix() {
                   <button
                     key={type}
                     onClick={() => setSelectedCategory(type)}
-                    className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                    className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left focus:outline-none ${
                       selectedCategory === type
                         ? "bg-gray-800 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -597,7 +545,6 @@ function AIFix() {
                       <div className='space-y-4'>
                         {elementIssues.map((issue, issueIndex) => {
                           const suggestions = fixSuggestions[issue.title] || [];
-                          const validation = validationResults[issue.title];
 
                           return (
                             <div
@@ -613,32 +560,6 @@ function AIFix() {
                                     <span className='bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium'>
                                       Impact: {Math.round(issue.impact)}%
                                     </span>
-                                  )}
-                                  {fixedIssues[issue.title] ? (
-                                    <span className='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>
-                                      Fixed
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={() =>
-                                        handleApplyFix(issue, suggestions[0])
-                                      }
-                                      disabled={fixingStatus[issue.title]}
-                                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                        fixingStatus[issue.title]
-                                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                          : "bg-blue-500 text-white hover:bg-blue-600"
-                                      }`}
-                                    >
-                                      {fixingStatus[issue.title] ? (
-                                        <div className='flex items-center gap-2'>
-                                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
-                                          Applying...
-                                        </div>
-                                      ) : (
-                                        "Apply This Fix"
-                                      )}
-                                    </button>
                                   )}
                                 </div>
                               </div>
@@ -661,26 +582,6 @@ function AIFix() {
                                         <p className='text-gray-700 font-medium'>
                                           {suggestion.description}
                                         </p>
-                                        <button
-                                          onClick={() =>
-                                            handleApplyFix(issue, suggestion)
-                                          }
-                                          disabled={fixingStatus[issue.title]}
-                                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                            fixingStatus[issue.title]
-                                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                              : "bg-blue-500 text-white hover:bg-blue-600"
-                                          }`}
-                                        >
-                                          {fixingStatus[issue.title] ? (
-                                            <div className='flex items-center gap-2'>
-                                              <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
-                                              Applying...
-                                            </div>
-                                          ) : (
-                                            "Apply This Fix"
-                                          )}
-                                        </button>
                                       </div>
 
                                       {suggestion.code && (
@@ -701,19 +602,6 @@ function AIFix() {
                                       )}
                                     </div>
                                   ))}
-                                </div>
-                              )}
-
-                              {/* Validation Results */}
-                              {validation && (
-                                <div
-                                  className={`mt-3 p-3 rounded-lg ${
-                                    validation.status === "success"
-                                      ? "bg-green-50 text-green-700"
-                                      : "bg-red-50 text-red-700"
-                                  }`}
-                                >
-                                  {validation.message}
                                 </div>
                               )}
                             </div>

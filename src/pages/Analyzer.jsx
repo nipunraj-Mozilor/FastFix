@@ -324,7 +324,7 @@ function Analyzer() {
         <div className='flex gap-2 mb-6'>
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors outline-none focus:outline-none focus:ring-0 focus-visible:outline-none ${
               selectedCategory === "all"
                 ? "bg-gray-800 text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -337,7 +337,7 @@ function Analyzer() {
               <button
                 key={type}
                 onClick={() => setSelectedCategory(type)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors outline-none focus:outline-none focus:ring-0 focus-visible:outline-none ${
                   selectedCategory === type
                     ? "bg-gray-800 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -685,9 +685,9 @@ function Analyzer() {
                         </div>
                         <p className='text-gray-600'>
                           {aiAnalysis
-                            .split("2. Critical Issues:")[0]
-                            .replace("1. Overall Assessment:", "")
-                            .trim()}
+                            ?.split("2. Critical Issues:")[0]
+                            ?.replace("1. Overall Assessment:", "")
+                            ?.trim()}
                         </p>
                       </div>
                     </div>
@@ -700,9 +700,9 @@ function Analyzer() {
                       <div className='bg-white p-4 rounded-lg mb-2'>
                         <p className='text-gray-600'>
                           {aiAnalysis
-                            .split("2. Critical Issues:")[1]
-                            .split("3. Key Recommendations:")[0]
-                            .trim()}
+                            ?.split("2. Critical Issues:")[1]
+                            ?.split("3. Key Recommendations:")[0]
+                            ?.trim()}
                         </p>
                       </div>
                     </div>
@@ -715,8 +715,8 @@ function Analyzer() {
                       <div className='bg-white p-4 rounded-lg mb-2'>
                         <p className='text-gray-600'>
                           {aiAnalysis
-                            .split("3. Key Recommendations:")[1]
-                            .trim()}
+                            ?.split("3. Key Recommendations:")[1]
+                            ?.trim()}
                         </p>
                       </div>
                     </div>
