@@ -10,6 +10,12 @@ const port = 3001;
 app.use(cors());
 app.use(express.json());
 
+// Import routes
+import repoModificationRoutes from './routes/repoModificationRoutes.js';
+
+// Use routes
+app.use('/api/repo', repoModificationRoutes);
+
 async function discoverPages(url, maxPages = 100) {
   const browser = await puppeteer.launch({
     headless: "new",
@@ -398,6 +404,12 @@ app.post("/analyze", async (req, res) => {
   }
 
   res.end();
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
 });
 
 app.listen(port, () => {
