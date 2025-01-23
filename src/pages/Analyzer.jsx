@@ -615,8 +615,8 @@ function Analyzer() {
 
         {results && (
           <>
-            <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
+            <div className="bg-white p-8 rounded-lg shadow-lg mt-4 max-w-4xl w-full">
+              <h2 className="text-xl font-bold text-gray-800 mb-6">
                 Analysis Results
               </h2>
 
