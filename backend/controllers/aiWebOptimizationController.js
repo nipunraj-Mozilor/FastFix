@@ -18,11 +18,10 @@ const getGitConfig = async () => {
 
 const analyzeWebsitePerformance = async (content, fileType) => {
   try {
-    const config = await getGitConfig();
     const llm = new ChatOpenAI({
       temperature: 0.7,
       modelName: "gpt-4",
-      openAIApiKey: config.openAIApiKey
+      openAIApiKey: process.env.OPENAI_API_KEY
     });
 
     const promptTemplate = `
@@ -157,26 +156,37 @@ Return a JSON array of changes. Each object must have:
 
 export const optimizeWebsite = async (req, res) => {
   try {
-    const config = await getGitConfig();
-    const { githubToken, owner, repo } = config;
+    const { githubToken, owner, repo } = req.body;
+
+    if (!githubToken || !owner || !repo) {
+      throw new Error('Missing required parameters: githubToken, owner, and repo are required');
+    }
 
     const octokit = new Octokit({
-      auth: githubToken,
+      auth: githubToken
     });
+
+    // Get repository info to find the default branch
+    const { data: repoInfo } = await octokit.repos.get({
+      owner,
+      repo
+    });
+
+    const defaultBranch = repoInfo.default_branch;
 
     // Create optimization branch
     const branchName = `ai-optimize-${Date.now()}`;
     const { data: ref } = await octokit.git.getRef({
       owner,
       repo,
-      ref: "heads/main",
+      ref: `heads/${defaultBranch}`
     });
 
     await octokit.git.createRef({
       owner,
       repo,
       ref: `refs/heads/${branchName}`,
-      sha: ref.object.sha,
+      sha: ref.object.sha
     });
 
     // Get repository files
@@ -184,7 +194,7 @@ export const optimizeWebsite = async (req, res) => {
       owner,
       repo,
       tree_sha: ref.object.sha,
-      recursive: "true",
+      recursive: "true"
     });
 
     // Create a simplified results object
@@ -304,7 +314,7 @@ ${optimizationResults.changes
         title: "AI-Powered Website Optimization",
         body: prBody,
         head: branchName,
-        base: "main",
+        base: defaultBranch
       });
 
       // Add PR URLs to results
@@ -330,25 +340,30 @@ ${optimizationResults.changes
 
 export const applySpecificOptimization = async (req, res) => {
   try {
-    const { suggestion } = req.body;
+    const { suggestion, githubToken, owner, repo } = req.body;
 
-    if (!suggestion) {
-      throw new Error('Missing required parameter: suggestion');
+    if (!suggestion || !githubToken || !owner || !repo) {
+      throw new Error('Missing required parameters: suggestion, githubToken, owner, and repo are required');
     }
 
-    const config = await getGitConfig();
-    const { githubToken, owner, repo } = config;
-    
     const octokit = new Octokit({
       auth: githubToken
     });
+
+    // Get repository info to find the default branch
+    const { data: repoInfo } = await octokit.repos.get({
+      owner,
+      repo
+    });
+
+    const defaultBranch = repoInfo.default_branch;
 
     // Create optimization branch
     const branchName = `ai-optimize-specific-${Date.now()}`;
     const { data: ref } = await octokit.git.getRef({
       owner,
       repo,
-      ref: 'heads/main'
+      ref: `heads/${defaultBranch}`
     });
 
     await octokit.git.createRef({
@@ -491,7 +506,7 @@ ${optimizationResults.changes.map(change =>
         title: `AI Optimization: ${suggestion}`,
         body: prBody,
         head: branchName,
-        base: 'main'
+        base: defaultBranch
       });
 
       optimizationResults.pullRequest = {
