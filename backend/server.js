@@ -3,20 +3,30 @@ import cors from "cors";
 import lighthouse from "lighthouse";
 import * as chromeLauncher from "chrome-launcher";
 import puppeteer from "puppeteer";
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use(cors());
+// Configure CORS
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      process.env.FRONTEND_URL,
+    ].filter(Boolean),
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Import routes
-import repoModificationRoutes from './routes/repoModificationRoutes.js';
+import repoModificationRoutes from "./routes/repoModificationRoutes.js";
 
 // Use routes
-app.use('/api/repo', repoModificationRoutes);
+app.use("/api/repo", repoModificationRoutes);
 
 async function discoverPages(url, maxPages = 100) {
   const browser = await puppeteer.launch({
@@ -153,30 +163,30 @@ async function analyzePage(page, url) {
     const categories = report.categories;
 
     // Add debug logging
-    console.log('Raw Lighthouse Categories:', {
+    console.log("Raw Lighthouse Categories:", {
       performance: categories.performance.score,
       accessibility: categories.accessibility.score,
-      bestPractices: categories['best-practices'].score,
-      seo: categories.seo.score
+      bestPractices: categories["best-practices"].score,
+      seo: categories.seo.score,
     });
 
-    console.log('Sample Performance Metrics:', {
-      cls: audits['cumulative-layout-shift'].score,
-      lcp: audits['largest-contentful-paint'].score,
-      fcp: audits['first-contentful-paint'].score,
-      si: audits['speed-index'].score
+    console.log("Sample Performance Metrics:", {
+      cls: audits["cumulative-layout-shift"].score,
+      lcp: audits["largest-contentful-paint"].score,
+      fcp: audits["first-contentful-paint"].score,
+      si: audits["speed-index"].score,
     });
 
     // Log a few critical issues for verification
     const criticalIssues = Object.values(audits)
-      .filter(audit => audit.score !== null && audit.score < 0.5)
-      .map(audit => ({
+      .filter((audit) => audit.score !== null && audit.score < 0.5)
+      .map((audit) => ({
         title: audit.title,
         score: audit.score,
-        description: audit.description
+        description: audit.description,
       }));
-    
-    console.log('Critical Issues Found:', criticalIssues);
+
+    console.log("Critical Issues Found:", criticalIssues);
 
     const extractIssues = (categoryName, categoryData) => {
       const issues = [];
@@ -200,23 +210,25 @@ async function analyzePage(page, url) {
         const audit = audits[ref.id];
         if (audit.score !== 1 && audit.score !== null) {
           // Get raw values
-          const rawScore = audit.score || 0;     // Score is 0-1
-          const weight = ref.weight || 1;        // Weight is typically 0-1
-          const maxWeight = Math.max(...auditRefs.map(r => r.weight || 0));
-          
+          const rawScore = audit.score || 0; // Score is 0-1
+          const weight = ref.weight || 1; // Weight is typically 0-1
+          const maxWeight = Math.max(...auditRefs.map((r) => r.weight || 0));
+
           // Calculate relative impact (0-100 scale)
           // Consider both the score and the relative weight of the audit
           const normalizedImpact = (
-            ((1 - rawScore) * (weight / maxWeight) * 100)
+            (1 - rawScore) *
+            (weight / maxWeight) *
+            100
           ).toFixed(1);
 
-          console.log('Impact calculation:', {
+          console.log("Impact calculation:", {
             auditTitle: audit.title,
             rawScore,
             weight,
             maxWeight,
             normalizedImpact,
-            type: categoryName.toLowerCase()
+            type: categoryName.toLowerCase(),
           });
 
           const issue = {
@@ -227,14 +239,15 @@ async function analyzePage(page, url) {
             impact: normalizedImpact,
             weight: ref.weight,
             items: audit.details?.items || [],
-            recommendations: audit.details?.items
-              ?.map((item) => ({
-                snippet: item.node?.snippet || item.source || "",
-                selector: item.node?.selector || "",
-                suggestion: item.suggestion || audit.description,
-              }))
-              .filter((rec) => rec.snippet || rec.selector)
-              .slice(0, 3) || [],
+            recommendations:
+              audit.details?.items
+                ?.map((item) => ({
+                  snippet: item.node?.snippet || item.source || "",
+                  selector: item.node?.selector || "",
+                  suggestion: item.suggestion || audit.description,
+                }))
+                .filter((rec) => rec.snippet || rec.selector)
+                .slice(0, 3) || [],
           };
           issues.push(issue);
         }
@@ -405,7 +418,7 @@ async function scanWebsite(url, sendProgress) {
 
 app.post("/analyze", async (req, res) => {
   const { url } = req.body;
-  
+
   if (!url) {
     return res.status(400).json({ error: "URL is required" });
   }
@@ -423,7 +436,7 @@ app.post("/analyze", async (req, res) => {
     };
 
     const scanResults = await scanWebsite(url, sendProgress);
-    
+
     // Return the final results
     const mainResults = scanResults.urls[0]?.scores || {
       performance: { score: 0 },
@@ -453,10 +466,81 @@ app.post("/analyze", async (req, res) => {
   res.end();
 });
 
+app.post("/api/scan-elements", async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "networkidle0" });
+
+    // Get all elements and their details
+    const elements = await page.evaluate(() => {
+      const getAllElements = (root) => {
+        const elements = [];
+        const walk = (node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            elements.push({
+              tag: node.tagName.toLowerCase(),
+              id: node.id || null,
+              classes: Array.from(node.classList || []),
+              textContent: node.textContent?.trim() || null,
+              attributes: Array.from(node.attributes || []).map((attr) => ({
+                name: attr.name,
+                value: attr.value,
+              })),
+              path: getXPath(node),
+              children: node.children.length,
+            });
+
+            // Convert HTMLCollection to Array before using forEach
+            Array.from(node.children).forEach(walk);
+          }
+        };
+
+        const getXPath = (node) => {
+          const parts = [];
+          while (node && node.nodeType === Node.ELEMENT_NODE) {
+            let idx = 0;
+            let sibling = node;
+            while (sibling) {
+              if (
+                sibling.nodeType === Node.ELEMENT_NODE &&
+                sibling.tagName === node.tagName
+              )
+                idx++;
+              sibling = sibling.previousSibling;
+            }
+            const tag = node.tagName.toLowerCase();
+            parts.unshift(`${tag}[${idx}]`);
+            node = node.parentNode;
+          }
+          return parts.length ? "/" + parts.join("/") : "";
+        };
+
+        walk(root);
+        return elements;
+      };
+
+      return getAllElements(document.body);
+    });
+
+    await browser.close();
+    res.json({ elements });
+  } catch (error) {
+    console.error("Error scanning elements:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  res.status(500).json({ error: "Something went wrong!" });
 });
 
 app.listen(port, () => {

@@ -53,35 +53,34 @@ Issue Title: {title}
 Description: {description}
 Impact Score: {impact}
 
-Based on the issue type and title, provide detailed technical recommendations:
-
-For Performance Issues:
-- If it's about loading time: suggest code splitting, lazy loading, and caching strategies
-- If it's about rendering: suggest optimizations for JavaScript execution and layout
-- If it's about resources: suggest compression, optimization, and delivery strategies
-
-For Accessibility Issues:
-- Suggest specific ARIA attributes or HTML structure changes
-- Provide color contrast recommendations if relevant
-- Recommend keyboard navigation improvements if applicable
-
-For Best Practices:
-- Suggest modern web development patterns
-- Recommend security improvements if relevant
-- Provide code structure improvements
-
-For SEO Issues:
-- Suggest meta tag improvements
-- Recommend content structure changes
-- Provide schema markup suggestions
+For Accessibility Issues, provide recommendations based on the specific violation:
+- For missing alt attributes: Suggest appropriate alt text based on image context and purpose
+- For color contrast: Provide specific color values that meet WCAG guidelines
+- For keyboard navigation: Suggest proper tabindex and focus management
+- For ARIA labels: Recommend appropriate ARIA attributes and roles
+- For form controls: Suggest proper label associations and form structure
+- For heading hierarchy: Recommend proper heading structure
+- For link text: Suggest descriptive link text improvements
+- For multimedia: Recommend proper captions and transcripts
+- For dynamic content: Suggest proper live regions and updates
+- For touch targets: Recommend proper sizing and spacing
 
 Please provide 3 specific, actionable recommendations in this format:
 1. [Title of Recommendation]
+   - Issue Detection: [How to identify affected elements]
    - Implementation: [Step-by-step technical implementation]
    - Code Example: [If applicable, provide a code snippet]
-   - Expected Impact: [Specific improvement in metrics]
+   - Validation: [How to verify the fix]
+   - Expected Impact: [Specific improvement in accessibility]
 
-Keep recommendations technical, specific, and focused on modern web development best practices.
+For code examples, include:
+- Proper HTML structure
+- Required ARIA attributes
+- Event handlers if needed
+- CSS modifications if required
+- JavaScript snippets if dynamic functionality is needed
+
+Keep recommendations technical, specific, and focused on WCAG 2.1 compliance.
 `);
 
 // Create the recommendation chain
