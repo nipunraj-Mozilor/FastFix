@@ -4,10 +4,9 @@ import '../styles/SignUp.css';
 
 function SignUp() {
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -25,13 +24,8 @@ function SignUp() {
     setError('');
 
     // Basic validation
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.username || !formData.email || !formData.password) {
       setError('All fields are required');
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
       return;
     }
 
@@ -41,69 +35,56 @@ function SignUp() {
     }
 
     // Here you would typically make an API call to register the user
-    // For now, we'll just navigate to the analyzer
     navigate('/analyzer');
   };
 
   return (
     <div className="signup-container">
       <div className="signup-card">
-        <h1>Create Account</h1>
-        <p className="subtitle">Start analyzing your website performance</p>
+        <img src="../../public/logo.svg" alt="FastFix Logo" className="logo" />
+        <h1>Join FastFix</h1>
+        <p className="subtitle">Already have an account? <a href="/login">Sign in</a></p>
         
         {error && <div className="error-message">{error}</div>}
         
         <form onSubmit={handleSubmit} className="signup-form">
           <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+            <label htmlFor="username">Username</label>
             <input
               type="text"
-              id="name"
-              name="name"
-              value={formData.name}
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
-              placeholder="John Doe"
             />
           </div>
           
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Email address</label>
             <input
               type="email"
               id="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="john@example.com"
             />
           </div>
           
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="••••••••"
-            />
+            <div className="password-input-container">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+              />
+            </div>
           </div>
           
           <button type="submit" className="signup-button">
-            Create Account
+            Create account
           </button>
         </form>
       </div>
