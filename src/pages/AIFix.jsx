@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getFixSuggestions, applyFix, validateFix } from "../services/aiFix";
+import { scanWebsiteElements } from "../services/domScanner";
 
 function AIFix() {
   const location = useLocation();
@@ -18,6 +19,27 @@ function AIFix() {
   const [loadingStates, setLoadingStates] = useState({});
   const [validationResults, setValidationResults] = useState({});
   const [error, setError] = useState(null);
+  const [scannedElements, setScannedElements] = useState([]);
+  const [isScanning, setIsScanning] = useState(false);
+
+  // Scan website elements
+  useEffect(() => {
+    const scanElements = async () => {
+      if (!websiteUrl) return;
+
+      try {
+        setIsScanning(true);
+        const { elements } = await scanWebsiteElements(websiteUrl);
+        setScannedElements(elements);
+      } catch (err) {
+        setError("Failed to scan elements: " + err.message);
+      } finally {
+        setIsScanning(false);
+      }
+    };
+
+    scanElements();
+  }, [websiteUrl]);
 
   // Step 1: Trigger Fix Suggestions
   useEffect(() => {
@@ -258,8 +280,9 @@ function AIFix() {
             </div>
           </div>
 
-          {/* Main Content */}
-          <div className='col-span-12 lg:col-span-9'>
+          {/* Main Content Area */}
+          <div className='col-span-12 lg:col-span-9 space-y-6'>
+            {/* Original Issues Section */}
             <div className='bg-white rounded-xl shadow-lg p-6'>
               <h2 className='text-xl font-bold text-gray-800 mb-6'>
                 DOM Elements with Issues
@@ -267,6 +290,64 @@ function AIFix() {
 
               {/* Elements List */}
               <div className='space-y-6'>
+                {/* Missing Alt Attributes Section */}
+                {scannedElements.filter(
+                  (element) =>
+                    element.tag === "img" &&
+                    (!element.attributes.find((attr) => attr.name === "alt") ||
+                      element.attributes.find(
+                        (attr) => attr.name === "alt" && attr.value === ""
+                      ))
+                ).length > 0 && (
+                  <div className='border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow'>
+                    {/* Element Header */}
+                    <div className='mb-4'>
+                      <div className='flex items-center justify-between mb-2'>
+                        <h3 className='text-lg font-semibold text-gray-800'>
+                          Images Missing Alt Attributes
+                        </h3>
+                        <div className='flex gap-2'>
+                          <span className='px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border-green-200'>
+                            Accessibility
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Images List */}
+                    <div className='space-y-4'>
+                      {scannedElements
+                        .filter(
+                          (element) =>
+                            element.tag === "img" &&
+                            (!element.attributes.find(
+                              (attr) => attr.name === "alt"
+                            ) ||
+                              element.attributes.find(
+                                (attr) =>
+                                  attr.name === "alt" && attr.value === ""
+                              ))
+                        )
+                        .map((element, index) => (
+                          <div
+                            key={index}
+                            className='border-t border-gray-100 pt-4'
+                          >
+                            <code className='block text-black text-sm font-mono bg-gray-100 p-3 rounded'>
+                              {`<img ${element.attributes
+                                .map((attr) => `${attr.name}="${attr.value}"`)
+                                .join(" ")}>`}
+                            </code>
+                            <div className='mt-2 text-sm text-gray-600'>
+                              Found at: {element.location || "Unknown location"}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Original Elements with Issues */}
                 {filteredElements.map((selector, index) => {
                   const elementIssues = groupedIssues[selector].filter(
                     (issue) =>
@@ -282,8 +363,111 @@ function AIFix() {
                       {/* Element Header */}
                       <div className='mb-4'>
                         <div className='flex items-center justify-between mb-2'>
-                          <code className='text-black bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono'>
-                            {selector}
+                          <code className='text-black bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono whitespace-pre'>
+                            {(() => {
+                              const parts = selector
+                                .split(" > ")
+                                .map((part) => {
+                                  // Split by both . and # but keep the delimiters
+                                  const segments = part.split(/([.#\[])/);
+                                  const tag = segments[0];
+
+                                  // Process segments to collect classes, ids, and other attributes
+                                  let classes = [];
+                                  let id = null;
+                                  let otherAttributes = {};
+
+                                  for (let i = 1; i < segments.length; i += 2) {
+                                    const delimiter = segments[i];
+                                    const value = segments[i + 1];
+
+                                    if (delimiter === ".") {
+                                      classes.push(value);
+                                    } else if (delimiter === "#") {
+                                      id = value;
+                                    } else if (delimiter === "[") {
+                                      // Handle attribute selectors [attr="value"]
+                                      const attrMatch = value.match(
+                                        /([^=\]]+)(?:="([^"]*)")?\]/
+                                      );
+                                      if (attrMatch) {
+                                        const [, attrName, attrValue] =
+                                          attrMatch;
+                                        otherAttributes[attrName] =
+                                          attrValue || "";
+                                      }
+                                    }
+                                  }
+
+                                  // Get element's actual attributes from the issues
+                                  const elementIssue = elementIssues.find(
+                                    (issue) =>
+                                      issue.element?.attributes?.some(
+                                        (attr) =>
+                                          (attr.name === "class" &&
+                                            attr.value === classes.join(" ")) ||
+                                          (attr.name === "id" &&
+                                            attr.value === id)
+                                      )
+                                  );
+
+                                  if (elementIssue?.element?.attributes) {
+                                    elementIssue.element.attributes.forEach(
+                                      (attr) => {
+                                        if (
+                                          attr.name !== "class" &&
+                                          attr.name !== "id"
+                                        ) {
+                                          otherAttributes[attr.name] =
+                                            attr.value;
+                                        }
+                                      }
+                                    );
+                                  }
+
+                                  return {
+                                    tag,
+                                    classes: classes.length
+                                      ? classes.join(" ")
+                                      : null,
+                                    id,
+                                    attributes: otherAttributes,
+                                  };
+                                });
+
+                              let output = "";
+                              // Add opening tags with indentation
+                              parts.forEach((part, index) => {
+                                const indent = " ".repeat(index * 2);
+                                const attrs = [];
+
+                                if (part.id) attrs.push(`id="${part.id}"`);
+                                if (part.classes)
+                                  attrs.push(`class="${part.classes}"`);
+
+                                // Add other attributes
+                                Object.entries(part.attributes || {}).forEach(
+                                  ([key, value]) => {
+                                    attrs.push(`${key}="${value}"`);
+                                  }
+                                );
+
+                                const attributes = attrs.length
+                                  ? " " + attrs.join(" ")
+                                  : "";
+                                output += `${indent}<${part.tag}${attributes}>\n`;
+                              });
+
+                              // Add closing tags with proper indentation
+                              [...parts].reverse().forEach((part, index) => {
+                                const indent = " ".repeat(
+                                  (parts.length - 1 - index) * 2
+                                );
+                                output += `${indent}</${part.tag}>\n`;
+                              });
+
+                              return output.trim();
+                            })()}
                           </code>
                           <div className='flex gap-2'>
                             {Array.from(
@@ -443,6 +627,46 @@ function AIFix() {
                 )}
               </div>
             </div>
+
+            {/* Display scanned elements */}
+            {/* <div className='mt-8'>
+              <h2 className='text-2xl font-bold mb-4'>Scanned Elements</h2>
+              {isScanning ? (
+                <div className='text-gray-600'>
+                  Scanning website elements...
+                </div>
+              ) : scannedElements.length > 0 ? (
+                <div className='space-y-4'>
+                  {scannedElements.map((element, index) => (
+                    <div key={index} className='p-4 bg-white rounded-lg shadow'>
+                      <div className='flex items-center space-x-2'>
+                        <span className='font-mono text-blue-600'>
+                          {element.tag}
+                        </span>
+                        {element.id && (
+                          <span className='text-gray-600'>#{element.id}</span>
+                        )}
+                        {element.classes.length > 0 && (
+                          <span className='text-green-600'>
+                            .{element.classes.join(".")}
+                          </span>
+                        )}
+                      </div>
+                      {element.textContent && (
+                        <div className='mt-2 text-gray-700 truncate'>
+                          {element.textContent}
+                        </div>
+                      )}
+                      <div className='mt-2 text-sm text-gray-500'>
+                        Path: {element.path}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className='text-gray-600'>No elements scanned yet.</div>
+              )}
+            </div> */}
           </div>
         </div>
       </div>
