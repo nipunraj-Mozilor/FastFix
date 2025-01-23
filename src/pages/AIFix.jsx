@@ -230,6 +230,12 @@ function AIFix() {
 
       const data = await response.json();
       console.log("Fix applied successfully:", data);
+
+      // Open diff URL in new tab if available
+      if (data.success && data.data.pullRequest?.diffUrl) {
+        window.open(data.data.pullRequest.diffUrl, "_blank");
+      }
+
       setShowModal(false);
       setCurrentSuggestion(null);
     } catch (err) {
@@ -247,24 +253,24 @@ function AIFix() {
           <div className='flex items-center gap-4'>
             <button onClick={() => navigate("/")} className='p-2 rounded-lg'>
               <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                className='w-6 h-6 text-white'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
               >
                 <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  d='M10 19l-7-7m0 0l7-7m-7 7h18'
                 />
               </svg>
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800 text-left">
+              <h1 className='text-2xl font-bold text-gray-800 text-left'>
                 DOM Element Analysis
               </h1>
-              <p className="text-gray-600 text-left">
+              <p className='text-gray-600 text-left'>
                 Analyzing {websiteUrl || "website"}
               </p>
             </div>
@@ -379,44 +385,44 @@ function AIFix() {
         )}
 
         {error && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded">
-            <p className="text-red-700">{error}</p>
+          <div className='mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded'>
+            <p className='text-red-700'>{error}</p>
           </div>
         )}
 
         {loadingStates.suggestions && (
-          <div className="mb-6 bg-blue-50 p-4 rounded-lg flex items-center gap-3">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-            <p className="text-blue-600">
+          <div className='mb-6 bg-blue-50 p-4 rounded-lg flex items-center gap-3'>
+            <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600'></div>
+            <p className='text-blue-600'>
               Analyzing issues and generating fix suggestions...
             </p>
           </div>
         )}
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className='grid grid-cols-12 gap-6'>
           {/* Sidebar */}
-          <div className="col-span-12 lg:col-span-3 space-y-6">
+          <div className='col-span-12 lg:col-span-3 space-y-6'>
             {/* Scan Stats */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className='bg-white rounded-xl shadow-lg p-6'>
+              <h2 className='text-lg font-semibold text-gray-800 mb-4'>
                 Scan Statistics
               </h2>
-              <div className="space-y-3">
+              <div className='space-y-3'>
                 <div>
-                  <span className="text-gray-600">Pages Scanned:</span>
-                  <span className="text-black font-medium ml-2">
+                  <span className='text-gray-600'>Pages Scanned:</span>
+                  <span className='text-black font-medium ml-2'>
                     {scanStats?.pagesScanned || 0}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-600">Elements with Issues:</span>
-                  <span className="text-black font-medium ml-2">
+                  <span className='text-gray-600'>Elements with Issues:</span>
+                  <span className='text-black font-medium ml-2'>
                     {Object.keys(groupedIssues).length}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-600">Total Issues:</span>
-                  <span className="text-black font-medium ml-2">
+                  <span className='text-gray-600'>Total Issues:</span>
+                  <span className='text-black font-medium ml-2'>
                     {issues.length}
                   </span>
                 </div>
@@ -424,11 +430,11 @@ function AIFix() {
             </div>
 
             {/* Category Filter */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className='bg-white rounded-xl shadow-lg p-6'>
+              <h2 className='text-lg font-semibold text-gray-800 mb-4'>
                 Filter by Category
               </h2>
-              <div className="space-y-2">
+              <div className='space-y-2'>
                 <button
                   onClick={() => setSelectedCategory("all")}
                   className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left focus:outline-none ${
@@ -456,11 +462,11 @@ function AIFix() {
             </div>
 
             {/* Stats Summary */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className='bg-white rounded-xl shadow-lg p-6'>
+              <h2 className='text-lg font-semibold text-gray-800 mb-4'>
                 Issue Summary
               </h2>
-              <div className="space-y-3">
+              <div className='space-y-3'>
                 {["performance", "accessibility", "seo"].map((category) => {
                   const count = issues.filter(
                     (issue) => issue.type === category
@@ -470,8 +476,8 @@ function AIFix() {
                       key={category}
                       className={`p-3 rounded-lg ${getTypeColor(category)}`}
                     >
-                      <div className="text-lg font-bold">{count}</div>
-                      <div className="text-sm">
+                      <div className='text-lg font-bold'>{count}</div>
+                      <div className='text-sm'>
                         {category.charAt(0).toUpperCase() + category.slice(1)}{" "}
                         Issues
                       </div>
@@ -483,15 +489,15 @@ function AIFix() {
           </div>
 
           {/* Main Content Area */}
-          <div className="col-span-12 lg:col-span-9 space-y-6">
+          <div className='col-span-12 lg:col-span-9 space-y-6'>
             {/* Original Issues Section */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">
+            <div className='bg-white rounded-xl shadow-lg p-6'>
+              <h2 className='text-xl font-bold text-gray-800 mb-6'>
                 DOM Elements with Issues
               </h2>
 
               {/* Elements List */}
-              <div className="space-y-6">
+              <div className='space-y-6'>
                 {/* Missing Alt Attributes Section */}
                 {scannedElements.filter(
                   (element) =>
@@ -501,15 +507,15 @@ function AIFix() {
                         (attr) => attr.name === "alt" && attr.value === ""
                       ))
                 ).length > 0 && (
-                  <div className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                  <div className='border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow'>
                     {/* Element Header */}
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-800">
+                    <div className='mb-4'>
+                      <div className='flex items-center justify-between mb-2'>
+                        <h3 className='text-lg font-semibold text-gray-800'>
                           Images Missing Alt Attributes
                         </h3>
-                        <div className="flex gap-2">
-                          <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border-green-200">
+                        <div className='flex gap-2'>
+                          <span className='px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border-green-200'>
                             Accessibility
                           </span>
                         </div>
@@ -517,7 +523,7 @@ function AIFix() {
                     </div>
 
                     {/* Images List */}
-                    <div className="space-y-4">
+                    <div className='space-y-4'>
                       {scannedElements
                         .filter(
                           (element) =>
@@ -533,14 +539,14 @@ function AIFix() {
                         .map((element, index) => (
                           <div
                             key={index}
-                            className="border-t border-gray-100 pt-4"
+                            className='border-t border-gray-100 pt-4'
                           >
-                            <code className="block text-black text-sm font-mono bg-gray-100 p-3 rounded">
+                            <code className='block text-black text-sm font-mono bg-gray-100 p-3 rounded'>
                               {`<img ${element.attributes
                                 .map((attr) => `${attr.name}="${attr.value}"`)
                                 .join(" ")}>`}
                             </code>
-                            <div className="mt-2 text-sm text-gray-600">
+                            <div className='mt-2 text-sm text-gray-600'>
                               Found at: {element.location || "Unknown location"}
                             </div>
                           </div>
@@ -560,12 +566,12 @@ function AIFix() {
                   return (
                     <div
                       key={index}
-                      className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+                      className='border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow'
                     >
                       {/* Element Header */}
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <code className="text-black bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono whitespace-pre">
+                      <div className='mb-4'>
+                        <div className='flex items-center justify-between mb-2'>
+                          <code className='text-black bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono whitespace-pre'>
                             {(() => {
                               const parts = selector
                                 .split(" > ")
@@ -671,7 +677,7 @@ function AIFix() {
                               return output.trim();
                             })()}
                           </code>
-                          <div className="flex gap-2">
+                          <div className='flex gap-2'>
                             {Array.from(
                               new Set(elementIssues.map((issue) => issue.type))
                             ).map((type) => (
@@ -689,28 +695,28 @@ function AIFix() {
                       </div>
 
                       {/* Issues for this element */}
-                      <div className="space-y-4">
+                      <div className='space-y-4'>
                         {elementIssues.map((issue, issueIndex) => {
                           const suggestions = fixSuggestions[issue.title] || [];
 
                           return (
                             <div
                               key={issueIndex}
-                              className="border-t border-gray-100 pt-4"
+                              className='border-t border-gray-100 pt-4'
                             >
-                              <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-lg font-semibold text-gray-800">
+                              <div className='flex items-center justify-between mb-2'>
+                                <h3 className='text-lg font-semibold text-gray-800'>
                                   {issue.title}
                                 </h3>
-                                <div className="flex items-center gap-2">
+                                <div className='flex items-center gap-2'>
                                   {issue.impact && (
-                                    <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                                    <span className='bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium'>
                                       Impact: {Math.round(issue.impact)}%
                                     </span>
                                   )}
                                 </div>
                               </div>
-                              <p className="text-gray-600 mb-3">
+                              <p className='text-gray-600 mb-3'>
                                 {issue.description}
                               </p>
 
@@ -733,27 +739,27 @@ function AIFix() {
                                   {suggestions.map((suggestion, sugIndex) => (
                                     <div
                                       key={sugIndex}
-                                      className="bg-white rounded-lg p-4 border border-gray-200"
+                                      className='bg-white rounded-lg p-4 border border-gray-200'
                                     >
-                                      <div className="flex items-center justify-between mb-3">
-                                        <p className="text-gray-700 font-medium">
+                                      <div className='flex items-center justify-between mb-3'>
+                                        <p className='text-gray-700 font-medium'>
                                           {suggestion.description}
                                         </p>
                                       </div>
 
                                       {suggestion.code && (
-                                        <div className="bg-gray-50 p-3 rounded-lg mt-2">
-                                          <span className="block text-sm text-gray-600 mb-1">
+                                        <div className='bg-gray-50 p-3 rounded-lg mt-2'>
+                                          <span className='block text-sm text-gray-600 mb-1'>
                                             Proposed Changes:
                                           </span>
-                                          <pre className="text-black text-sm bg-gray-100 p-2 rounded overflow-x-auto">
+                                          <pre className='text-black text-sm bg-gray-100 p-2 rounded overflow-x-auto'>
                                             <code>{suggestion.code}</code>
                                           </pre>
                                         </div>
                                       )}
 
                                       {suggestion.impact && (
-                                        <div className="mt-2 text-sm text-gray-600">
+                                        <div className='mt-2 text-sm text-gray-600'>
                                           Expected Impact: {suggestion.impact}
                                         </div>
                                       )}
@@ -770,8 +776,8 @@ function AIFix() {
                 })}
 
                 {filteredElements.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">
+                  <div className='text-center py-8'>
+                    <p className='text-gray-600'>
                       No DOM elements found with issues in the selected
                       category.
                     </p>
