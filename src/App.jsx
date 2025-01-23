@@ -203,35 +203,34 @@ function App() {
     const [loadingRecommendations, setLoadingRecommendations] = useState({});
 
     const toggleRecommendations = async (issueIndex, issue) => {
-      setExpandedRecommendations((prev) => ({
+      // Toggle expanded state
+      const newExpandedState = !expandedRecommendations[issueIndex];
+      setExpandedRecommendations(prev => ({
         ...prev,
-        [issueIndex]: !prev[issueIndex],
+        [issueIndex]: newExpandedState
       }));
 
-      // If expanding and no recommendations exist, get AI recommendations
-      if (
-        !expandedRecommendations[issueIndex] &&
-        (!issue.recommendations || issue.recommendations.length === 0) &&
-        !aiRecommendations[issueIndex]
-      ) {
+      // Only fetch if expanding and no existing recommendations
+      if (newExpandedState && !aiRecommendations[issueIndex]) {
         try {
-          console.log("Getting AI recommendations for issue:", issue);
-          setLoadingRecommendations((prev) => ({
+          setLoadingRecommendations(prev => ({
             ...prev,
-            [issueIndex]: true,
+            [issueIndex]: true
           }));
+
           const recommendations = await getIssueRecommendations(issue);
-          console.log("AI recommendations:", recommendations);
-          setAiRecommendations((prev) => ({
+          console.log('Received recommendations:', recommendations);
+
+          setAiRecommendations(prev => ({
             ...prev,
-            [issueIndex]: recommendations,
+            [issueIndex]: recommendations
           }));
         } catch (error) {
-          console.error("Failed to get AI recommendations:", error);
+          console.error('Failed to get AI recommendations:', error);
         } finally {
-          setLoadingRecommendations((prev) => ({
+          setLoadingRecommendations(prev => ({
             ...prev,
-            [issueIndex]: false,
+            [issueIndex]: false
           }));
         }
       }
@@ -381,113 +380,63 @@ function App() {
 
               <p className='text-gray-600 mb-4'>{issue.description}</p>
 
-              {(issue.recommendations?.length > 0 ||
-                !expandedRecommendations[index]) && (
+              <button
+                onClick={() => toggleRecommendations(index, issue)}
+                className='mt-4 text-blue-600 hover:text-blue-800 flex items-center gap-2'
+              >
+                {expandedRecommendations[index] ? 'Hide' : 'Show'} AI Recommendations
+                <svg
+                  className={`w-4 h-4 transition-transform ${
+                    expandedRecommendations[index] ? 'rotate-180' : ''
+                  }`}
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M19 9l-7 7-7-7'
+                  />
+                </svg>
+              </button>
+
+              {expandedRecommendations[index] && (
                 <div className='mt-4'>
-                  <div
-                    onClick={() => toggleRecommendations(index, issue)}
-                    className='flex items-center gap-2 cursor-pointer group'
-                  >
-                    <h4 className='font-medium text-gray-800 group-hover:text-gray-600 transition-colors'>
-                      {issue.recommendations?.length > 0
-                        ? "Recommendations:"
-                        : "Get AI Recommendations"}
-                    </h4>
-                    <svg
-                      className={`w-4 h-4 text-gray-600 transition-transform group-hover:text-gray-500 ${
-                        expandedRecommendations[index] ? "rotate-180" : ""
-                      }`}
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M19 9l-7 7-7-7'
-                      />
-                    </svg>
-                  </div>
-
-                  {expandedRecommendations[index] && (
-                    <div className='space-y-3 mt-2'>
-                      {loadingRecommendations[index] ? (
-                        <div className='flex items-center justify-center p-4'>
-                          <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600'></div>
-                        </div>
-                      ) : (
-                        <>
-                          {(
-                            issue.recommendations ||
-                            aiRecommendations ||
-                            []
-                          ).map((rec, idx) => (
-                            <div
-                              key={idx}
-                              className='bg-gray-50 rounded-lg p-4 space-y-3'
-                            >
-                              {!issue.recommendations && (
-                                <div className='flex justify-end mb-2'>
-                                  <span className='bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded'>
-                                    AI Generated
-                                  </span>
-                                </div>
-                              )}
-
-                              <h4 className='font-medium text-gray-800'>
-                                {rec.suggestion}
-                              </h4>
-
-                              {rec.implementation && (
-                                <div className='bg-green-50 p-3 rounded-lg border border-green-100'>
-                                  <span className='font-medium text-green-700'>
-                                    Implementation:
-                                  </span>
-                                  <p className='mt-1 text-green-800'>
-                                    {rec.implementation}
-                                  </p>
-                                </div>
-                              )}
-
-                              {rec.codeExample && (
-                                <div className='bg-purple-50 p-3 rounded-lg border border-purple-100'>
-                                  <span className='font-medium text-purple-700'>
-                                    Code Example:
-                                  </span>
-                                  <pre className='mt-2 p-3 bg-purple-100 rounded overflow-x-auto'>
-                                    <code className='text-purple-800'>
-                                      {rec.codeExample}
-                                    </code>
-                                  </pre>
-                                </div>
-                              )}
-
-                              {rec.expectedImpact && (
-                                <div className='bg-blue-50 p-3 rounded-lg border border-blue-100'>
-                                  <span className='font-medium text-blue-700'>
-                                    Expected Impact:
-                                  </span>
-                                  <p className='mt-1 text-blue-800'>
-                                    {rec.expectedImpact}
-                                  </p>
-                                </div>
-                              )}
-
-                              {rec.selector && (
-                                <div className='flex items-center gap-2 text-sm mb-2 bg-blue-50 p-2 rounded-lg border border-blue-100'>
-                                  <span className='font-medium text-blue-700 whitespace-nowrap'>
-                                    Element:
-                                  </span>
-                                  <code className='bg-blue-100 px-2 py-1 rounded text-blue-800 flex-1 overflow-x-auto'>
-                                    {rec.selector}
-                                  </code>
-                                </div>
-                              )}
+                  {loadingRecommendations[index] ? (
+                    <div className='flex justify-center'>
+                      <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600'></div>
+                    </div>
+                  ) : (
+                    <div className='space-y-4'>
+                      {aiRecommendations[index]?.map((rec, recIndex) => (
+                        <div key={recIndex} className='bg-gray-50 rounded-lg p-4'>
+                          <div className='flex justify-end mb-2'>
+                            <span className='bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded'>
+                              AI Generated
+                            </span>
+                          </div>
+                          
+                          <h4 className='font-medium text-gray-800 mb-2'>
+                            {rec.suggestion}
+                          </h4>
+                          
+                          {rec.implementation && (
+                            <div className='bg-green-50 p-3 rounded-lg mt-2'>
+                              <span className='font-medium text-green-700'>Implementation:</span>
+                              <p className='mt-1 text-green-800'>{rec.implementation}</p>
                             </div>
-                          ))}
-                        </>
-                      )}
+                          )}
+                          
+                          {rec.expectedImpact && (
+                            <div className='bg-blue-50 p-3 rounded-lg mt-2'>
+                              <span className='font-medium text-blue-700'>Expected Impact:</span>
+                              <p className='mt-1 text-blue-800'>{rec.expectedImpact}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
