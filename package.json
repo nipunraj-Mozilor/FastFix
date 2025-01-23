@@ -11,8 +11,10 @@
     "unlighthouse": "npx @unlighthouse/cli --site localhost:5173"
   },
   "dependencies": {
+    "@langchain/openai": "^0.3.17",
     "@unlighthouse/core": "^0.15.0",
     "chrome-launcher": "^1.1.2",
+    "langchain": "^0.3.12",
     "lighthouse": "^12.3.0",
     "puppeteer": "^24.1.0",
     "react": "^18.3.1",

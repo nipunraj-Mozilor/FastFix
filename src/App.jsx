@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { runLighthouseAnalysis } from "./services/lighthouse";
+import { getAIAnalysis, getIssueRecommendations } from "./services/langchain";
 
 function App() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [scanStats, setScanStats] = useState({
     pagesScanned: 0,
     totalPages: 0,
@@ -23,6 +26,7 @@ function App() {
     setLoading(true);
     setError(null);
     setResults(null);
+    setAiAnalysis(null);
     setScanStats({ pagesScanned: 0, totalPages: 0, scannedUrls: [] });
 
     try {
@@ -38,6 +42,11 @@ function App() {
         seo: response.seo,
       });
 
+      // Get AI Analysis
+      setAiLoading(true);
+      const analysis = await getAIAnalysis(response);
+      setAiAnalysis(analysis);
+
       // Final scan stats update
       if (response.scanStats) {
         setScanStats(response.scanStats);
@@ -46,6 +55,7 @@ function App() {
       setError(err.message);
     } finally {
       setLoading(false);
+      setAiLoading(false);
     }
   };
 
@@ -189,12 +199,42 @@ function App() {
   const IssueReport = ({ results }) => {
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [expandedRecommendations, setExpandedRecommendations] = useState({});
+    const [aiRecommendations, setAiRecommendations] = useState({});
+    const [loadingRecommendations, setLoadingRecommendations] = useState({});
 
-    const toggleRecommendations = (issueIndex) => {
+    const toggleRecommendations = async (issueIndex, issue) => {
       setExpandedRecommendations((prev) => ({
         ...prev,
         [issueIndex]: !prev[issueIndex],
       }));
+
+      // If expanding and no recommendations exist, get AI recommendations
+      if (
+        !expandedRecommendations[issueIndex] &&
+        (!issue.recommendations || issue.recommendations.length === 0) &&
+        !aiRecommendations[issueIndex]
+      ) {
+        try {
+          console.log("Getting AI recommendations for issue:", issue);
+          setLoadingRecommendations((prev) => ({
+            ...prev,
+            [issueIndex]: true,
+          }));
+          const recommendations = await getIssueRecommendations(issue);
+          console.log("AI recommendations:", recommendations);
+          setAiRecommendations((prev) => ({
+            ...prev,
+            [issueIndex]: recommendations,
+          }));
+        } catch (error) {
+          console.error("Failed to get AI recommendations:", error);
+        } finally {
+          setLoadingRecommendations((prev) => ({
+            ...prev,
+            [issueIndex]: false,
+          }));
+        }
+      }
     };
 
     const allIssues = [
@@ -341,14 +381,17 @@ function App() {
 
               <p className='text-gray-600 mb-4'>{issue.description}</p>
 
-              {issue.recommendations && issue.recommendations.length > 0 && (
+              {(issue.recommendations?.length > 0 ||
+                !expandedRecommendations[index]) && (
                 <div className='mt-4'>
                   <div
-                    onClick={() => toggleRecommendations(index)}
+                    onClick={() => toggleRecommendations(index, issue)}
                     className='flex items-center gap-2 cursor-pointer group'
                   >
                     <h4 className='font-medium text-gray-800 group-hover:text-gray-600 transition-colors'>
-                      Recommendations:
+                      {issue.recommendations?.length > 0
+                        ? "Recommendations:"
+                        : "Get AI Recommendations"}
                     </h4>
                     <svg
                       className={`w-4 h-4 text-gray-600 transition-transform group-hover:text-gray-500 ${
@@ -366,35 +409,85 @@ function App() {
                       />
                     </svg>
                   </div>
+
                   {expandedRecommendations[index] && (
                     <div className='space-y-3 mt-2'>
-                      {issue.recommendations.map((rec, idx) => (
-                        <div key={idx} className='bg-gray-50 rounded-lg p-3'>
-                          {rec.selector && (
-                            <div className='flex items-center gap-2 text-sm mb-2 bg-blue-50 p-2 rounded-lg border border-blue-100'>
-                              <span className='font-medium text-blue-700 whitespace-nowrap'>
-                                Element:
-                              </span>
-                              <code className='bg-blue-100 px-2 py-1 rounded text-blue-800 flex-1 overflow-x-auto'>
-                                {rec.selector}
-                              </code>
-                            </div>
-                          )}
-                          {rec.snippet && (
-                            <div className='flex items-center gap-2 text-sm mb-2 bg-purple-50 p-2 rounded-lg border border-purple-100'>
-                              <span className='font-medium text-purple-700 whitespace-nowrap'>
-                                Code:
-                              </span>
-                              <code className='bg-purple-100 px-2 py-1 rounded text-purple-800 flex-1 overflow-x-auto'>
-                                {rec.snippet}
-                              </code>
-                            </div>
-                          )}
-                          <p className='text-sm text-gray-600'>
-                            {rec.suggestion}
-                          </p>
+                      {loadingRecommendations[index] ? (
+                        <div className='flex items-center justify-center p-4'>
+                          <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600'></div>
                         </div>
-                      ))}
+                      ) : (
+                        <>
+                          {(
+                            issue.recommendations ||
+                            aiRecommendations ||
+                            []
+                          ).map((rec, idx) => (
+                            <div
+                              key={idx}
+                              className='bg-gray-50 rounded-lg p-4 space-y-3'
+                            >
+                              {!issue.recommendations && (
+                                <div className='flex justify-end mb-2'>
+                                  <span className='bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded'>
+                                    AI Generated
+                                  </span>
+                                </div>
+                              )}
+
+                              <h4 className='font-medium text-gray-800'>
+                                {rec.suggestion}
+                              </h4>
+
+                              {rec.implementation && (
+                                <div className='bg-green-50 p-3 rounded-lg border border-green-100'>
+                                  <span className='font-medium text-green-700'>
+                                    Implementation:
+                                  </span>
+                                  <p className='mt-1 text-green-800'>
+                                    {rec.implementation}
+                                  </p>
+                                </div>
+                              )}
+
+                              {rec.codeExample && (
+                                <div className='bg-purple-50 p-3 rounded-lg border border-purple-100'>
+                                  <span className='font-medium text-purple-700'>
+                                    Code Example:
+                                  </span>
+                                  <pre className='mt-2 p-3 bg-purple-100 rounded overflow-x-auto'>
+                                    <code className='text-purple-800'>
+                                      {rec.codeExample}
+                                    </code>
+                                  </pre>
+                                </div>
+                              )}
+
+                              {rec.expectedImpact && (
+                                <div className='bg-blue-50 p-3 rounded-lg border border-blue-100'>
+                                  <span className='font-medium text-blue-700'>
+                                    Expected Impact:
+                                  </span>
+                                  <p className='mt-1 text-blue-800'>
+                                    {rec.expectedImpact}
+                                  </p>
+                                </div>
+                              )}
+
+                              {rec.selector && (
+                                <div className='flex items-center gap-2 text-sm mb-2 bg-blue-50 p-2 rounded-lg border border-blue-100'>
+                                  <span className='font-medium text-blue-700 whitespace-nowrap'>
+                                    Element:
+                                  </span>
+                                  <code className='bg-blue-100 px-2 py-1 rounded text-blue-800 flex-1 overflow-x-auto'>
+                                    {rec.selector}
+                                  </code>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -498,6 +591,44 @@ function App() {
               <h2 className='text-xl font-bold text-gray-800 mb-4'>
                 Analysis Results
               </h2>
+
+              {/* AI Analysis Section */}
+              {aiAnalysis && (
+                <div className='mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100'>
+                  <div className='flex items-center gap-2 mb-3'>
+                    <svg
+                      className='w-6 h-6 text-blue-600'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M13 10V3L4 14h7v7l9-11h-7z'
+                      />
+                    </svg>
+                    <h3 className='text-lg font-semibold text-gray-800'>
+                      AI Insights
+                    </h3>
+                  </div>
+                  {aiLoading ? (
+                    <div className='flex items-center justify-center p-4'>
+                      <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+                    </div>
+                  ) : (
+                    <div className='prose prose-blue max-w-none'>
+                      {aiAnalysis.split("\n").map((line, index) => (
+                        <p key={index} className='text-gray-700 mb-2'>
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className='text-sm text-gray-600 mb-4'>
                 <div>Total Pages Scanned: {scanStats.pagesScanned}</div>
                 {scanStats.scannedUrls.length > 0 && (
