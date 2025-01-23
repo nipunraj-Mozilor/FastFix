@@ -708,16 +708,16 @@ function Analyzer() {
                 </div>
               )}
 
-              <div className="text-sm text-gray-600 mb-4">
+              <div className="text-lg font-semibold text-gray-600 my-6">
                 <div>Total Pages Scanned: {scanStats.pagesScanned}</div>
                 {scanStats.scannedUrls.length > 0 && (
-                  <div className="mt-4">
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                     <h3 className="font-medium mb-2">Scanned URLs:</h3>
                     <div className="max-h-40 overflow-y-auto bg-gray-50 rounded p-2">
                       {scanStats.scannedUrls.map((url, index) => (
                         <div
                           key={index}
-                          className="text-xs text-gray-600 py-1 border-b border-gray-200 last:border-0"
+                          className="text-xs text-gray-600 border-b border-gray-200 last:border-0 first:pt-0 py-3"
                         >
                           {url}
                         </div>
