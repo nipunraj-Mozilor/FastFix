@@ -1,7 +1,7 @@
 import express from 'express';
 import { modifyRepo, searchAndModifyRepo } from '../controllers/repoModificationController.js';
 import { aiModifyRepo } from '../controllers/aiRepoModificationController.js';
-import { optimizeWebsite } from '../controllers/aiWebOptimizationController.js';
+import { optimizeWebsite, applySpecificOptimization } from '../controllers/aiWebOptimizationController.js';
 
 const router = express.Router();
 
@@ -16,5 +16,7 @@ router.post('/ai-modify', aiModifyRepo);
 
 // New route for AI-powered website optimization
 router.post('/ai-optimize', optimizeWebsite);
+
+router.post('/ai-optimize-specific', applySpecificOptimization);
 
 export default router; 
