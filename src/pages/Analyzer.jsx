@@ -141,11 +141,13 @@ function Analyzer() {
       const aiAnalysisResult = await getAIAnalysis(response);
       setAiAnalysis(aiAnalysisResult);
 
-      if (response.scanStats) {
-        setScanStats(response.scanStats);
-      }
+      const finalScanStats = {
+        pagesScanned: response.scanStats?.pagesScanned || scanStats.pagesScanned,
+        totalPages: response.scanStats?.totalPages || scanStats.totalPages,
+        scannedUrls: response.scanStats?.scannedUrls || scanStats.scannedUrls,
+      };
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('website_analyses')
         .update({
           status: 'completed',
@@ -153,7 +155,7 @@ function Analyzer() {
           accessibility_score: response.accessibility.score,
           best_practices_score: response.bestPractices.score,
           seo_score: response.seo.score,
-          scan_stats: scanStats,
+          scan_stats: finalScanStats,
           lighthouse_results: {
             performance: response.performance,
             accessibility: response.accessibility,
@@ -164,6 +166,10 @@ function Analyzer() {
         })
         .eq('id', analysis.id);
 
+      if (updateError) throw updateError;
+
+      setScanStats(finalScanStats);
+
       navigate(`/analyze/${analysis.id}`);
     } catch (err) {
       setError(err.message);
@@ -172,6 +178,7 @@ function Analyzer() {
           .from('website_analyses')
           .update({
             status: 'failed',
+            scan_stats: scanStats,
           })
           .eq('id', analysisId);
       }

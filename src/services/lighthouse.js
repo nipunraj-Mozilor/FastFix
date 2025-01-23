@@ -62,7 +62,30 @@ export async function runLighthouseAnalysis(url, onProgress) {
             }
 
             if (data.done) {
-              return data;
+              return {
+                performance: {
+                  score: data.performance.score,
+                  issues: data.performance.issues,
+                  metrics: data.performance.metrics,
+                },
+                accessibility: {
+                  score: data.accessibility.score,
+                  issues: data.accessibility.issues,
+                },
+                bestPractices: {
+                  score: data.bestPractices.score,
+                  issues: data.bestPractices.issues,
+                },
+                seo: {
+                  score: data.seo.score,
+                  issues: data.seo.issues,
+                },
+                scanStats: {
+                  pagesScanned: data.scanStats?.pagesScanned || 0,
+                  totalPages: data.scanStats?.totalPages || 0,
+                  scannedUrls: data.scanStats?.scannedUrls || [],
+                },
+              };
             }
 
             // Handle progress updates
