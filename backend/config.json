@@ -1,0 +1,6 @@
+{
+    "githubToken": "token",
+    "owner": "owner",
+    "repo": "repo_name",
+    "defaultBranch": "main"
+}
