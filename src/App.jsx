@@ -526,7 +526,7 @@ function App() {
         try {
           setLoadingRecommendations((prev) => ({
             ...prev,
-            [issueIndex]: true,
+            [issueIndex]: true
           }));
 
           const recommendations = await getIssueRecommendations(issue);
@@ -534,14 +534,14 @@ function App() {
 
           setAiRecommendations((prev) => ({
             ...prev,
-            [issueIndex]: recommendations,
+            [issueIndex]: recommendations
           }));
         } catch (error) {
-          console.error("Failed to get AI recommendations:", error);
+          console.error('Failed to get AI recommendations:', error);
         } finally {
-          setLoadingRecommendations((prev) => ({
+          setLoadingRecommendations(prev => ({
             ...prev,
-            [issueIndex]: false,
+            [issueIndex]: false
           }));
         }
       }
