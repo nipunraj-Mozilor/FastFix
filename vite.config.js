@@ -25,9 +25,16 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   define: {
     // If you need to use process.env anywhere else
-    'process.env': {}
-  }
+    "process.env": {},
+  },
 });
