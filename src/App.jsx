@@ -72,11 +72,14 @@ function App() {
       });
 
       // Update logging to use getImpactLabel after it's defined
-      console.log('Raw Lighthouse Response:', response);
-      console.log('Performance Score:', response.performance?.score);
-      console.log('Critical Issues:', response.performance?.issues?.filter(
-        issue => getImpactLabel(issue.impact, 'performance') === 'Critical'
-      ));
+      console.log("Raw Lighthouse Response:", response);
+      console.log("Performance Score:", response.performance?.score);
+      console.log(
+        "Critical Issues:",
+        response.performance?.issues?.filter(
+          (issue) => getImpactLabel(issue.impact, "performance") === "Critical"
+        )
+      );
 
       setResults({
         performance: response.performance,
@@ -109,7 +112,7 @@ function App() {
           score: data.score,
           metricsPresent: data.metrics ? Object.keys(data.metrics) : [],
           auditCount: data.audits ? Object.keys(data.audits).length : 0,
-          details: data.details
+          details: data.details,
         });
 
         // Validate metric values
@@ -129,19 +132,18 @@ function App() {
     // Single renderMetricItem function that handles both cases
     const renderMetricItem = (title, value, score) => {
       // Handle both metric object and direct value/score inputs
-      const displayValue = typeof value === 'object' 
-        ? value.displayValue || value.value 
-        : value;
-      const displayScore = typeof value === 'object'
-        ? value.score || 0
-        : score;
+      const displayValue =
+        typeof value === "object" ? value.displayValue || value.value : value;
+      const displayScore = typeof value === "object" ? value.score || 0 : score;
 
       return (
         <div className='flex items-center justify-between p-2 border-b border-gray-100 last:border-0'>
           <span className='text-sm font-medium text-gray-600'>{title}</span>
           <div className='flex items-center gap-2'>
             <span className='text-sm text-gray-800'>
-              {typeof displayValue === "number" ? Math.round(displayValue) + "ms" : displayValue}
+              {typeof displayValue === "number"
+                ? Math.round(displayValue) + "ms"
+                : displayValue}
             </span>
             <div
               className='w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white'
@@ -159,30 +161,17 @@ function App() {
 
       return (
         <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
-          {data.metrics.fcp && renderMetricItem(
-            "First Contentful Paint",
-            data.metrics.fcp
-          )}
-          {data.metrics.lcp && renderMetricItem(
-            "Largest Contentful Paint",
-            data.metrics.lcp
-          )}
-          {data.metrics.tbt && renderMetricItem(
-            "Total Blocking Time",
-            data.metrics.tbt
-          )}
-          {data.metrics.cls && renderMetricItem(
-            "Cumulative Layout Shift",
-            data.metrics.cls
-          )}
-          {data.metrics.si && renderMetricItem(
-            "Speed Index",
-            data.metrics.si
-          )}
-          {data.metrics.tti && renderMetricItem(
-            "Time to Interactive",
-            data.metrics.tti
-          )}
+          {data.metrics.fcp &&
+            renderMetricItem("First Contentful Paint", data.metrics.fcp)}
+          {data.metrics.lcp &&
+            renderMetricItem("Largest Contentful Paint", data.metrics.lcp)}
+          {data.metrics.tbt &&
+            renderMetricItem("Total Blocking Time", data.metrics.tbt)}
+          {data.metrics.cls &&
+            renderMetricItem("Cumulative Layout Shift", data.metrics.cls)}
+          {data.metrics.si && renderMetricItem("Speed Index", data.metrics.si)}
+          {data.metrics.tti &&
+            renderMetricItem("Time to Interactive", data.metrics.tti)}
         </div>
       );
     };
@@ -222,31 +211,40 @@ function App() {
 
       // Filter and transform accessibility issues with more flexible matching
       const findIssue = (keywords) => {
-        return data.issues.find(i => 
-          keywords.some(keyword => i.title.toLowerCase().includes(keyword))
+        return data.issues.find((i) =>
+          keywords.some((keyword) => i.title.toLowerCase().includes(keyword))
         );
       };
 
       const metrics = {
-        colorContrast: findIssue(['contrast', 'color']),
-        headings: findIssue(['heading', 'h1', 'h2', 'h3', 'header']),
-        aria: findIssue(['aria', 'accessible name', 'role']),
-        imageAlts: findIssue(['image', 'alt', 'img']),
-        linkNames: findIssue(['link', 'anchor', 'href'])
+        colorContrast: findIssue(["contrast", "color"]),
+        headings: findIssue(["heading", "h1", "h2", "h3", "header"]),
+        aria: findIssue(["aria", "accessible name", "role"]),
+        imageAlts: findIssue(["image", "alt", "img"]),
+        linkNames: findIssue(["link", "anchor", "href"]),
       };
 
       // Get all accessibility issues that don't have a perfect score
-      const allIssues = data.issues.filter(issue => issue.score < 100);
+      const allIssues = data.issues.filter((issue) => issue.score < 100);
 
       // If we have issues but didn't categorize them, they might belong to one of our categories
-      allIssues.forEach(issue => {
+      allIssues.forEach((issue) => {
         if (!Object.values(metrics).includes(issue)) {
           // Try to categorize the uncategorized issue
-          if (issue.title.toLowerCase().includes('color') || issue.title.toLowerCase().includes('contrast')) {
+          if (
+            issue.title.toLowerCase().includes("color") ||
+            issue.title.toLowerCase().includes("contrast")
+          ) {
             metrics.colorContrast = issue;
-          } else if (issue.title.toLowerCase().includes('structure') || issue.title.toLowerCase().includes('heading')) {
+          } else if (
+            issue.title.toLowerCase().includes("structure") ||
+            issue.title.toLowerCase().includes("heading")
+          ) {
             metrics.headings = issue;
-          } else if (issue.title.toLowerCase().includes('aria') || issue.title.toLowerCase().includes('role')) {
+          } else if (
+            issue.title.toLowerCase().includes("aria") ||
+            issue.title.toLowerCase().includes("role")
+          ) {
             metrics.aria = issue;
           }
         }
@@ -260,7 +258,7 @@ function App() {
               headings: "Headings",
               aria: "ARIA",
               imageAlts: "Image Alts",
-              linkNames: "Link Names"
+              linkNames: "Link Names",
             }[key];
 
             return renderMetricItem(
@@ -269,6 +267,135 @@ function App() {
               issue ? issue.score : 100
             );
           })}
+        </div>
+      );
+    };
+
+    const renderBestPracticesMetrics = () => {
+      if (label !== "Best Practices" || !data.issues) return null;
+
+      // Find issues related to each category
+      const findIssue = (keywords) => {
+        return data.issues.find((i) =>
+          keywords.some((keyword) => i.title.toLowerCase().includes(keyword))
+        );
+      };
+
+      const metrics = {
+        https: findIssue(["https", "security", "ssl"]),
+        doctype: findIssue(["doctype", "html5", "document-type"]),
+        javascript: findIssue(["javascript", "js", "error", "console"]),
+        mobile: findIssue(["mobile", "viewport", "responsive"]),
+        deprecatedApis: findIssue(["deprecated", "obsolete", "legacy"]),
+        browserErrors: findIssue(["browser", "error", "exception"]),
+      };
+
+      const bestPracticeMetrics = [
+        {
+          title: "HTTPS Usage",
+          value: metrics.https ? "Issues Found" : "Secure",
+          score: metrics.https ? 0 : 100,
+        },
+        {
+          title: "Valid Doctype",
+          value: metrics.doctype ? "Invalid" : "Valid",
+          score: metrics.doctype ? 0 : 100,
+        },
+        {
+          title: "JavaScript Errors",
+          value: metrics.javascript
+            ? `${metrics.javascript.items?.length || 0} errors`
+            : "No Errors",
+          score: metrics.javascript
+            ? Math.max(0, 100 - (metrics.javascript.items?.length || 0) * 10)
+            : 100,
+        },
+        {
+          title: "Mobile Friendly",
+          value: metrics.mobile ? "Issues Found" : "Optimized",
+          score: metrics.mobile ? 0 : 100,
+        },
+        {
+          title: "Deprecated APIs",
+          value: metrics.deprecatedApis
+            ? `${metrics.deprecatedApis.items?.length || 0} found`
+            : "None",
+          score: metrics.deprecatedApis ? 0 : 100,
+        },
+        {
+          title: "Browser Errors",
+          value: metrics.browserErrors
+            ? `${metrics.browserErrors.items?.length || 0} errors`
+            : "None",
+          score: metrics.browserErrors ? 0 : 100,
+        },
+      ];
+
+      return (
+        <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
+          {bestPracticeMetrics.map((metric) =>
+            renderMetricItem(metric.title, metric.value, metric.score)
+          )}
+        </div>
+      );
+    };
+
+    const renderSEOMetrics = () => {
+      if (label !== "SEO" || !data.issues) return null;
+
+      // Find issues related to each SEO category
+      const findIssue = (keywords) => {
+        return data.issues.find((i) =>
+          keywords.some((keyword) => i.title.toLowerCase().includes(keyword))
+        );
+      };
+
+      const metrics = {
+        metaDescription: findIssue(["meta description", "meta desc"]),
+        titleTags: findIssue(["title tag", "page title", "<title>"]),
+        headingStructure: findIssue([
+          "heading",
+          "h1",
+          "h2",
+          "header structure",
+        ]),
+        mobileOptimization: findIssue(["mobile", "viewport", "responsive"]),
+      };
+
+      // Calculate scores based on issues
+      const calculateScore = (issue) => {
+        if (!issue) return 100;
+        return Math.max(0, Math.min(100, issue.score));
+      };
+
+      const seoMetrics = [
+        {
+          title: "Meta Description",
+          value: metrics.metaDescription ? "Issues Found" : "Optimized",
+          score: calculateScore(metrics.metaDescription),
+        },
+        {
+          title: "Title Tags",
+          value: metrics.titleTags ? "Issues Found" : "Optimized",
+          score: calculateScore(metrics.titleTags),
+        },
+        {
+          title: "Heading Structure",
+          value: metrics.headingStructure ? "Issues Found" : "Optimized",
+          score: calculateScore(metrics.headingStructure),
+        },
+        {
+          title: "Mobile Optimization",
+          value: metrics.mobileOptimization ? "Issues Found" : "Optimized",
+          score: calculateScore(metrics.mobileOptimization),
+        },
+      ];
+
+      return (
+        <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
+          {seoMetrics.map((metric) =>
+            renderMetricItem(metric.title, metric.value, metric.score)
+          )}
         </div>
       );
     };
@@ -318,6 +445,8 @@ function App() {
         </div>
         {label === "Performance" && renderPerformanceMetrics()}
         {label === "Accessibility" && renderAccessibilityMetrics()}
+        {label === "Best Practices" && renderBestPracticesMetrics()}
+        {label === "SEO" && renderSEOMetrics()}
         {renderAuditDetails()}
       </div>
     );
@@ -332,42 +461,42 @@ function App() {
     // Add detailed validation logging
     useEffect(() => {
       if (results) {
-        console.log('Detailed Results Analysis:', {
+        console.log("Detailed Results Analysis:", {
           performanceScore: results.performance?.score,
           accessibilityScore: results.accessibility?.score,
           bestPracticesScore: results.bestPractices?.score,
           seoScore: results.seo?.score,
-          
+
           performanceIssuesCount: results.performance?.issues?.length,
           accessibilityIssuesCount: results.accessibility?.issues?.length,
           bestPracticesIssuesCount: results.bestPractices?.issues?.length,
           seoIssuesCount: results.seo?.issues?.length,
-          
+
           // Sample of highest impact issues
           topIssues: [
             ...(results.performance?.issues || []),
             ...(results.accessibility?.issues || []),
             ...(results.bestPractices?.issues || []),
-            ...(results.seo?.issues || [])
+            ...(results.seo?.issues || []),
           ]
             .sort((a, b) => parseFloat(b.impact) - parseFloat(a.impact))
             .slice(0, 5)
-            .map(issue => ({
+            .map((issue) => ({
               type: issue.type,
               title: issue.title,
               impact: issue.impact,
-              score: issue.score
-            }))
+              score: issue.score,
+            })),
         });
 
         // Validate impact calculations
-        results.performance?.issues?.forEach(issue => {
+        results.performance?.issues?.forEach((issue) => {
           if (issue.impact > 100) {
-            console.warn('Suspicious impact value:', {
+            console.warn("Suspicious impact value:", {
               title: issue.title,
               impact: issue.impact,
               score: issue.score,
-              type: issue.type
+              type: issue.type,
             });
           }
         });
@@ -376,34 +505,34 @@ function App() {
 
     // Add validation logging
     useEffect(() => {
-      console.log('Performance Issues:', results.performance?.issues);
-      console.log('Issue Metrics:', {
+      console.log("Performance Issues:", results.performance?.issues);
+      console.log("Issue Metrics:", {
         cls: results.performance?.metrics?.cls,
         lcp: results.performance?.metrics?.lcp,
-        speedIndex: results.performance?.metrics?.si
+        speedIndex: results.performance?.metrics?.si,
       });
     }, [results]);
 
     const toggleRecommendations = async (issueIndex, issue) => {
       // Toggle expanded state
       const newExpandedState = !expandedRecommendations[issueIndex];
-      setExpandedRecommendations(prev => ({
+      setExpandedRecommendations((prev) => ({
         ...prev,
-        [issueIndex]: newExpandedState
+        [issueIndex]: newExpandedState,
       }));
 
       // Only fetch if expanding and no existing recommendations
       if (newExpandedState && !aiRecommendations[issueIndex]) {
         try {
-          setLoadingRecommendations(prev => ({
+          setLoadingRecommendations((prev) => ({
             ...prev,
             [issueIndex]: true
           }));
 
           const recommendations = await getIssueRecommendations(issue);
-          console.log('Received recommendations:', recommendations);
+          console.log("Received recommendations:", recommendations);
 
-          setAiRecommendations(prev => ({
+          setAiRecommendations((prev) => ({
             ...prev,
             [issueIndex]: recommendations
           }));
@@ -567,10 +696,11 @@ function App() {
                 onClick={() => toggleRecommendations(index, issue)}
                 className='mt-4 text-blue-600 hover:text-blue-800 flex items-center gap-2'
               >
-                {expandedRecommendations[index] ? 'Hide' : 'Show'} AI Recommendations
+                {expandedRecommendations[index] ? "Hide" : "Show"} AI
+                Recommendations
                 <svg
                   className={`w-4 h-4 transition-transform ${
-                    expandedRecommendations[index] ? 'rotate-180' : ''
+                    expandedRecommendations[index] ? "rotate-180" : ""
                   }`}
                   fill='none'
                   stroke='currentColor'
@@ -594,28 +724,39 @@ function App() {
                   ) : (
                     <div className='space-y-4'>
                       {aiRecommendations[index]?.map((rec, recIndex) => (
-                        <div key={recIndex} className='bg-gray-50 rounded-lg p-4'>
+                        <div
+                          key={recIndex}
+                          className='bg-gray-50 rounded-lg p-4'
+                        >
                           <div className='flex justify-end mb-2'>
                             <span className='bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded'>
                               AI Generated
                             </span>
                           </div>
-                          
+
                           <h4 className='font-medium text-gray-800 mb-2'>
                             {rec.suggestion}
                           </h4>
-                          
+
                           {rec.implementation && (
                             <div className='bg-green-50 p-3 rounded-lg mt-2'>
-                              <span className='font-medium text-green-700'>Implementation:</span>
-                              <p className='mt-1 text-green-800'>{rec.implementation}</p>
+                              <span className='font-medium text-green-700'>
+                                Implementation:
+                              </span>
+                              <p className='mt-1 text-green-800'>
+                                {rec.implementation}
+                              </p>
                             </div>
                           )}
-                          
+
                           {rec.expectedImpact && (
                             <div className='bg-blue-50 p-3 rounded-lg mt-2'>
-                              <span className='font-medium text-blue-700'>Expected Impact:</span>
-                              <p className='mt-1 text-blue-800'>{rec.expectedImpact}</p>
+                              <span className='font-medium text-blue-700'>
+                                Expected Impact:
+                              </span>
+                              <p className='mt-1 text-blue-800'>
+                                {rec.expectedImpact}
+                              </p>
                             </div>
                           )}
                         </div>
