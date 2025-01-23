@@ -188,6 +188,14 @@ function App() {
 
   const IssueReport = ({ results }) => {
     const [selectedCategory, setSelectedCategory] = useState("all");
+    const [expandedRecommendations, setExpandedRecommendations] = useState({});
+
+    const toggleRecommendations = (issueIndex) => {
+      setExpandedRecommendations((prev) => ({
+        ...prev,
+        [issueIndex]: !prev[issueIndex],
+      }));
+    };
 
     const allIssues = [
       ...(results.performance?.issues || []),
@@ -335,38 +343,60 @@ function App() {
 
               {issue.recommendations && issue.recommendations.length > 0 && (
                 <div className='mt-4'>
-                  <h4 className='font-medium text-gray-800 mb-2'>
-                    Recommendations:
-                  </h4>
-                  <div className='space-y-3'>
-                    {issue.recommendations.map((rec, idx) => (
-                      <div key={idx} className='bg-gray-50 rounded-lg p-3'>
-                        {rec.selector && (
-                          <div className='text-sm mb-1'>
-                            <span className='font-medium text-gray-700'>
-                              Element:{" "}
-                            </span>
-                            <code className='bg-gray-100 px-1 py-0.5 rounded'>
-                              {rec.selector}
-                            </code>
-                          </div>
-                        )}
-                        {rec.snippet && (
-                          <div className='text-sm mb-1'>
-                            <span className='font-medium text-gray-700'>
-                              Code:{" "}
-                            </span>
-                            <code className='bg-gray-100 px-1 py-0.5 rounded'>
-                              {rec.snippet}
-                            </code>
-                          </div>
-                        )}
-                        <p className='text-sm text-gray-600'>
-                          {rec.suggestion}
-                        </p>
-                      </div>
-                    ))}
+                  <div
+                    onClick={() => toggleRecommendations(index)}
+                    className='flex items-center gap-2 cursor-pointer group'
+                  >
+                    <h4 className='font-medium text-gray-800 group-hover:text-gray-600 transition-colors'>
+                      Recommendations:
+                    </h4>
+                    <svg
+                      className={`w-4 h-4 text-gray-600 transition-transform group-hover:text-gray-500 ${
+                        expandedRecommendations[index] ? "rotate-180" : ""
+                      }`}
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M19 9l-7 7-7-7'
+                      />
+                    </svg>
                   </div>
+                  {expandedRecommendations[index] && (
+                    <div className='space-y-3 mt-2'>
+                      {issue.recommendations.map((rec, idx) => (
+                        <div key={idx} className='bg-gray-50 rounded-lg p-3'>
+                          {rec.selector && (
+                            <div className='flex items-center gap-2 text-sm mb-2 bg-blue-50 p-2 rounded-lg border border-blue-100'>
+                              <span className='font-medium text-blue-700 whitespace-nowrap'>
+                                Element:
+                              </span>
+                              <code className='bg-blue-100 px-2 py-1 rounded text-blue-800 flex-1 overflow-x-auto'>
+                                {rec.selector}
+                              </code>
+                            </div>
+                          )}
+                          {rec.snippet && (
+                            <div className='flex items-center gap-2 text-sm mb-2 bg-purple-50 p-2 rounded-lg border border-purple-100'>
+                              <span className='font-medium text-purple-700 whitespace-nowrap'>
+                                Code:
+                              </span>
+                              <code className='bg-purple-100 px-2 py-1 rounded text-purple-800 flex-1 overflow-x-auto'>
+                                {rec.snippet}
+                              </code>
+                            </div>
+                          )}
+                          <p className='text-sm text-gray-600'>
+                            {rec.suggestion}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
