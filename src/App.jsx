@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { runLighthouseAnalysis } from "./services/lighthouse";
 import { getAIAnalysis, getIssueRecommendations } from "./services/langchain";
+import AIFix from "./pages/AIFix";
 
 function App() {
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -14,6 +16,8 @@ function App() {
     totalPages: 0,
     scannedUrls: [],
   });
+
+  const navigate = useNavigate();
 
   // Shared utility function for score colors
   const getScoreColor = (score) => {
@@ -345,6 +349,42 @@ function App() {
           )}
         </div>
 
+        <div className='flex justify-end mb-6'>
+          <button
+            onClick={() => {
+              const allIssues = [
+                ...(results.performance?.issues || []),
+                ...(results.accessibility?.issues || []),
+                ...(results.bestPractices?.issues || []),
+                ...(results.seo?.issues || []),
+              ];
+              navigate("/ai-fix", {
+                state: {
+                  issues: allIssues,
+                  websiteUrl,
+                  scanStats,
+                },
+              });
+            }}
+            className='px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-colors flex items-center gap-2'
+          >
+            <svg
+              className='w-5 h-5'
+              fill='none'
+              stroke='currentColor'
+              viewBox='0 0 24 24'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M13 10V3L4 14h7v7l9-11h-7z'
+              />
+            </svg>
+            Get AI Fix
+          </button>
+        </div>
+
         <div className='space-y-6'>
           {filteredIssues.map((issue, index) => (
             <div
@@ -500,168 +540,188 @@ function App() {
   };
 
   return (
-    <div className='min-h-screen bg-gray-100 flex items-center justify-center p-4'>
-      <div className='max-w-4xl w-full space-y-8'>
-        <div className='bg-white p-6 rounded-lg shadow-lg'>
-          <h1 className='text-2xl font-bold text-center text-gray-800 mb-8'>
-            Website Performance Analyzer
-          </h1>
-          <form onSubmit={handleSubmit} className='space-y-4'>
-            <div>
-              <label
-                htmlFor='website'
-                className='block text-sm font-medium text-gray-700 mb-2'
-              >
-                Enter Website URL
-              </label>
-              <input
-                type='url'
-                id='website'
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder='https://example.com'
-                className='w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                required
-              />
-            </div>
-            <button
-              type='submit'
-              disabled={loading}
-              className={`w-full py-2 px-4 rounded-md text-white font-semibold ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              }`}
-            >
-              {loading ? "Analyzing..." : "Analyze Website"}
-            </button>
-          </form>
-        </div>
-
-        {loading && (
-          <div className='bg-white p-4 rounded-lg shadow-lg'>
-            <div className='flex flex-col items-center'>
-              <div className='mb-2'>Analyzing website...</div>
-              <div className='text-sm text-gray-600'>
-                Pages Scanned: {scanStats.pagesScanned}
-                {scanStats.totalPages > 0 && ` / ${scanStats.totalPages}`}
-              </div>
-              <div className='w-full bg-gray-200 rounded-full h-2.5 mt-2 mb-4'>
-                <div
-                  className='bg-blue-600 h-2.5 rounded-full'
-                  style={{
-                    width: `${
-                      scanStats.totalPages
-                        ? (scanStats.pagesScanned / scanStats.totalPages) * 100
-                        : 0
-                    }%`,
-                  }}
-                ></div>
-              </div>
-              {scanStats.scannedUrls.length > 0 && (
-                <div className='w-full mt-4'>
-                  <h3 className='text-sm font-medium text-gray-700 mb-2'>
-                    Scanned URLs:
-                  </h3>
-                  <div className='max-h-40 overflow-y-auto bg-gray-50 rounded p-2'>
-                    {scanStats.scannedUrls.map((url, index) => (
-                      <div
-                        key={index}
-                        className='text-xs text-gray-600 py-1 border-b border-gray-200 last:border-0'
-                      >
-                        {url}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className='bg-red-50 border-l-4 border-red-400 p-4 rounded'>
-            <p className='text-red-700'>{error}</p>
-          </div>
-        )}
-
-        {results && (
-          <>
-            <div className='bg-white p-6 rounded-lg shadow-lg'>
-              <h2 className='text-xl font-bold text-gray-800 mb-4'>
-                Analysis Results
-              </h2>
-
-              {/* AI Analysis Section */}
-              {aiAnalysis && (
-                <div className='mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100'>
-                  <div className='flex items-center gap-2 mb-3'>
-                    <svg
-                      className='w-6 h-6 text-blue-600'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
+    <Routes>
+      <Route
+        path='/'
+        element={
+          <div className='min-h-screen bg-gray-100 flex items-center justify-center p-4'>
+            <div className='max-w-4xl w-full space-y-8'>
+              <div className='bg-white p-6 rounded-lg shadow-lg'>
+                <h1 className='text-2xl font-bold text-center text-gray-800 mb-8'>
+                  Website Performance Analyzer
+                </h1>
+                <form onSubmit={handleSubmit} className='space-y-4'>
+                  <div>
+                    <label
+                      htmlFor='website'
+                      className='block text-sm font-medium text-gray-700 mb-2'
                     >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M13 10V3L4 14h7v7l9-11h-7z'
-                      />
-                    </svg>
-                    <h3 className='text-lg font-semibold text-gray-800'>
-                      AI Insights
-                    </h3>
+                      Enter Website URL
+                    </label>
+                    <input
+                      type='url'
+                      id='website'
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      placeholder='https://example.com'
+                      className='w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                      required
+                    />
                   </div>
-                  {aiLoading ? (
-                    <div className='flex items-center justify-center p-4'>
-                      <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+                  <button
+                    type='submit'
+                    disabled={loading}
+                    className={`w-full py-2 px-4 rounded-md text-white font-semibold ${
+                      loading
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    }`}
+                  >
+                    {loading ? "Analyzing..." : "Analyze Website"}
+                  </button>
+                </form>
+              </div>
+
+              {loading && (
+                <div className='bg-white p-4 rounded-lg shadow-lg'>
+                  <div className='flex flex-col items-center'>
+                    <div className='mb-2'>Analyzing website...</div>
+                    <div className='text-sm text-grey-600'>
+                      Pages Scanned:{" "}
+                      <span className='text-black-600 font-bold'>
+                        {scanStats.pagesScanned}
+                        {scanStats.totalPages > 0 &&
+                          ` / ${scanStats.totalPages}`}
+                      </span>
                     </div>
-                  ) : (
-                    <div className='prose prose-blue max-w-none'>
-                      {aiAnalysis.split("\n").map((line, index) => (
-                        <p key={index} className='text-gray-700 mb-2'>
-                          {line}
-                        </p>
-                      ))}
+                    <div className='w-full bg-gray-200 rounded-full h-2.5 mt-2 mb-4'>
+                      <div
+                        className='bg-blue-600 h-2.5 rounded-full'
+                        style={{
+                          width: `${
+                            scanStats.totalPages
+                              ? (scanStats.pagesScanned /
+                                  scanStats.totalPages) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      ></div>
                     </div>
-                  )}
+                    {scanStats.scannedUrls.length > 0 && (
+                      <div className='w-full mt-4'>
+                        <h3 className='text-sm font-medium text-gray-700 mb-2'>
+                          Scanned URLs:
+                        </h3>
+                        <div className='max-h-40 overflow-y-auto bg-gray-50 rounded p-2'>
+                          {scanStats.scannedUrls.map((url, index) => (
+                            <div
+                              key={index}
+                              className='text-xs text-gray-600 py-1 border-b border-gray-200 last:border-0'
+                            >
+                              {url}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <div className='text-sm text-gray-600 mb-4'>
-                <div>Total Pages Scanned: {scanStats.pagesScanned}</div>
-                {scanStats.scannedUrls.length > 0 && (
-                  <div className='mt-4'>
-                    <h3 className='font-medium mb-2'>Scanned URLs:</h3>
-                    <div className='max-h-40 overflow-y-auto bg-gray-50 rounded p-2'>
-                      {scanStats.scannedUrls.map((url, index) => (
-                        <div
-                          key={index}
-                          className='text-xs text-gray-600 py-1 border-b border-gray-200 last:border-0'
-                        >
-                          {url}
+              {error && (
+                <div className='bg-red-50 border-l-4 border-red-400 p-4 rounded'>
+                  <p className='text-red-700'>{error}</p>
+                </div>
+              )}
+
+              {results && (
+                <>
+                  <div className='bg-white p-6 rounded-lg shadow-lg'>
+                    <h2 className='text-xl font-bold text-gray-800 mb-4'>
+                      Analysis Results
+                    </h2>
+
+                    {/* AI Analysis Section */}
+                    {aiAnalysis && (
+                      <div className='mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100'>
+                        <div className='flex items-center gap-2 mb-3'>
+                          <svg
+                            className='w-6 h-6 text-blue-600'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                          >
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M13 10V3L4 14h7v7l9-11h-7z'
+                            />
+                          </svg>
+                          <h3 className='text-lg font-semibold text-gray-800'>
+                            AI Insights
+                          </h3>
                         </div>
-                      ))}
+                        {aiLoading ? (
+                          <div className='flex items-center justify-center p-4'>
+                            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+                          </div>
+                        ) : (
+                          <div className='prose prose-blue max-w-none'>
+                            {aiAnalysis.split("\n").map((line, index) => (
+                              <p key={index} className='text-gray-700 mb-2'>
+                                {line}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className='text-sm text-gray-600 mb-4'>
+                      <div>Total Pages Scanned: {scanStats.pagesScanned}</div>
+                      {scanStats.scannedUrls.length > 0 && (
+                        <div className='mt-4'>
+                          <h3 className='font-medium mb-2'>Scanned URLs:</h3>
+                          <div className='max-h-40 overflow-y-auto bg-gray-50 rounded p-2'>
+                            {scanStats.scannedUrls.map((url, index) => (
+                              <div
+                                key={index}
+                                className='text-xs text-gray-600 py-1 border-b border-gray-200 last:border-0'
+                              >
+                                {url}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                      <ScoreCard
+                        label='Performance'
+                        data={results.performance}
+                      />
+                      <ScoreCard
+                        label='Accessibility'
+                        data={results.accessibility}
+                      />
+                      <ScoreCard
+                        label='Best Practices'
+                        data={results.bestPractices}
+                      />
+                      <ScoreCard label='SEO' data={results.seo} />
                     </div>
                   </div>
-                )}
-              </div>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                <ScoreCard label='Performance' data={results.performance} />
-                <ScoreCard label='Accessibility' data={results.accessibility} />
-                <ScoreCard
-                  label='Best Practices'
-                  data={results.bestPractices}
-                />
-                <ScoreCard label='SEO' data={results.seo} />
-              </div>
+                  <IssueReport results={results} />
+                </>
+              )}
             </div>
-            <IssueReport results={results} />
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        }
+      />
+      <Route path='/ai-fix' element={<AIFix />} />
+    </Routes>
   );
 }
 
