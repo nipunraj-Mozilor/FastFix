@@ -318,7 +318,7 @@ function Analyzer() {
     };
 
     return (
-      <div className="mt-8 bg-white p-6 rounded-xl shadow-lg">
+      <div className="mt-8 bg-white p-6 rounded-xl shadow-lg max-w-4xl w-full">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Issues Report</h2>
 
         <div className="flex gap-2 mb-6">
