@@ -19,7 +19,7 @@ const suggestChanges = async (content, context) => {
     const llm = new ChatOpenAI({
         temperature: 0.7,
         modelName: "gpt-4",
-        openAIApiKey: config.openAIApiKey
+        openAIApiKey: process.env.OPENAI_API_KEY
     });
 
     // Create a simpler prompt template
@@ -73,7 +73,7 @@ Format your response as a JSON array with this structure:
 const generatePRDescription = async (changes, results) => {
     const config = await getGitConfig();
     const llm = new ChatOpenAI({
-        openAIApiKey: config.openAIApiKey
+        openAIApiKey: process.env.OPENAI_API_KEY
     });
     
     const response = await llm.invoke(
