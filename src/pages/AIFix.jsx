@@ -1,6 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getFixSuggestions, applyFix, validateFix } from "../services/aiFix";
+import { scanWebsiteElements } from "../services/domScanner";
+import jsPDF from "jspdf";
 
 function AIFix() {
   const location = useLocation();
@@ -11,13 +13,31 @@ function AIFix() {
     scanStats: { pagesScanned: 0, scannedUrls: [] },
   };
 
-  const [fixingStatus, setFixingStatus] = useState({});
-  const [fixedIssues, setFixedIssues] = useState({});
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [fixSuggestions, setFixSuggestions] = useState({});
   const [loadingStates, setLoadingStates] = useState({});
-  const [validationResults, setValidationResults] = useState({});
   const [error, setError] = useState(null);
+  const [scannedElements, setScannedElements] = useState([]);
+  const [isScanning, setIsScanning] = useState(false);
+
+  // Scan website elements
+  useEffect(() => {
+    const scanElements = async () => {
+      if (!websiteUrl) return;
+
+      try {
+        setIsScanning(true);
+        const { elements } = await scanWebsiteElements(websiteUrl);
+        setScannedElements(elements);
+      } catch (err) {
+        setError("Failed to scan elements: " + err.message);
+      } finally {
+        setIsScanning(false);
+      }
+    };
+
+    scanElements();
+  }, [websiteUrl]);
 
   // Step 1: Trigger Fix Suggestions
   useEffect(() => {
@@ -38,44 +58,6 @@ function AIFix() {
       fetchFixSuggestions();
     }
   }, [issues]);
-
-  // Step 4 & 5: Apply and Validate Fix
-  const handleApplyFix = async (issue, suggestion) => {
-    const issueKey = issue.title;
-    try {
-      // Start fixing
-      setFixingStatus((prev) => ({ ...prev, [issueKey]: true }));
-      setError(null);
-
-      // Apply the fix
-      const appliedFix = await applyFix(issue, suggestion);
-
-      // Validate the fix
-      const validationResult = await validateFix(issue, appliedFix);
-
-      // Update states based on validation
-      if (validationResult.success) {
-        setFixedIssues((prev) => ({ ...prev, [issueKey]: true }));
-        setValidationResults((prev) => ({
-          ...prev,
-          [issueKey]: { status: "success", message: validationResult.message },
-        }));
-      } else {
-        setValidationResults((prev) => ({
-          ...prev,
-          [issueKey]: { status: "error", message: validationResult.message },
-        }));
-      }
-    } catch (err) {
-      setError(err.message);
-      setValidationResults((prev) => ({
-        ...prev,
-        [issueKey]: { status: "error", message: err.message },
-      }));
-    } finally {
-      setFixingStatus((prev) => ({ ...prev, [issueKey]: false }));
-    }
-  };
 
   // Group issues by DOM element
   const groupedIssues = issues.reduce((acc, issue) => {
@@ -123,35 +105,130 @@ function AIFix() {
     }
   };
 
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    let yPos = 20;
+
+    // Add title
+    doc.setFontSize(16);
+    doc.text("Website Analysis Report", 20, yPos);
+    yPos += 20;
+
+    // Add scan statistics
+    doc.setFontSize(12);
+    doc.text(`Website URL: ${websiteUrl}`, 20, yPos);
+    yPos += 10;
+    doc.text(`Pages Scanned: ${scanStats.pagesScanned}`, 20, yPos);
+    yPos += 10;
+    doc.text(`Total Issues Found: ${issues.length}`, 20, yPos);
+    yPos += 20;
+
+    // Add issues and fixes
+    doc.setFontSize(14);
+    doc.text("Issues and AI Fixes:", 20, yPos);
+    yPos += 10;
+
+    issues.forEach((issue, index) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(12);
+      // Use title or description if available, fallback to a default message
+      const issueTitle =
+        issue.title || issue.description || "Issue details not available";
+      doc.text(`${index + 1}. Issue: ${issueTitle}`, 20, yPos);
+      yPos += 10;
+
+      // Add issue type and impact if available
+      if (issue.type || issue.impact) {
+        doc.setFontSize(10);
+        const typeText = issue.type ? `Type: ${issue.type}` : "";
+        const impactText = issue.impact
+          ? `Impact: ${Math.round(issue.impact)}%`
+          : "";
+        const infoText = [typeText, impactText].filter(Boolean).join(" | ");
+        if (infoText) {
+          doc.text(infoText, 30, yPos);
+          yPos += 10;
+        }
+      }
+
+      // Add fix suggestions
+      if (fixSuggestions[issue.title]) {
+        const suggestion = fixSuggestions[issue.title];
+        doc.setFontSize(10);
+        const suggestionText =
+          typeof suggestion === "string"
+            ? suggestion
+            : Array.isArray(suggestion)
+            ? suggestion[0]?.description || "Fix suggestion available"
+            : suggestion.description || "Fix suggestion available";
+        doc.text(`AI Fix Suggestion: ${suggestionText}`, 30, yPos);
+        yPos += 10;
+      }
+
+      // Add some spacing between issues
+      yPos += 5;
+    });
+
+    // Save the PDF
+    doc.save("website-analysis-report.pdf");
+  };
+
   return (
     <div className='min-h-screen bg-gray-100 p-8'>
       <div className='max-w-6xl mx-auto'>
         {/* Header with back button */}
-        <div className='flex items-center gap-4 mb-6'>
+        <div className='flex items-center justify-between mb-6'>
+          <div className='flex items-center gap-4'>
+            <button
+              onClick={() => navigate("/")}
+              className='p-2 rounded-lg'
+            >
+              <svg
+                className='w-6 h-6 text-white'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M10 19l-7-7m0 0l7-7m-7 7h18'
+                />
+              </svg>
+            </button>
+            <div>
+              <h1 className='text-2xl font-bold text-gray-800 text-left'>
+                DOM Element Analysis
+              </h1>
+              <p className='text-gray-600 text-left'>
+                Analyzing {websiteUrl || "website"}
+              </p>
+            </div>
+          </div>
+
           <button
-            onClick={() => navigate("/")}
-            className='p-2 hover:bg-gray-200 rounded-lg transition-colors'
+            onClick={generatePDF}
+            className='bg-black text-white px-4 py-2 rounded hover:bg-gray-800 flex items-center gap-2'
           >
             <svg
-              className='w-6 h-6 text-gray-600'
-              fill='none'
-              stroke='currentColor'
-              viewBox='0 0 24 24'
+              xmlns='http://www.w3.org/2000/svg'
+              className='h-5 w-5'
+              viewBox='0 0 20 20'
+              fill='currentColor'
             >
               <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M10 19l-7-7m0 0l7-7m-7 7h18'
+                fillRule='evenodd'
+                d='M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z'
+                clipRule='evenodd'
               />
             </svg>
+            Download Report
           </button>
-          <div>
-            <h1 className='text-2xl font-bold text-gray-800'>
-              DOM Element Analysis
-            </h1>
-            <p className='text-gray-600'>Analyzing {websiteUrl || "website"}</p>
-          </div>
         </div>
 
         {error && (
@@ -207,7 +284,7 @@ function AIFix() {
               <div className='space-y-2'>
                 <button
                   onClick={() => setSelectedCategory("all")}
-                  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left focus:outline-none ${
                     selectedCategory === "all"
                       ? "bg-gray-800 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -219,7 +296,7 @@ function AIFix() {
                   <button
                     key={type}
                     onClick={() => setSelectedCategory(type)}
-                    className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                    className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left focus:outline-none ${
                       selectedCategory === type
                         ? "bg-gray-800 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -258,8 +335,9 @@ function AIFix() {
             </div>
           </div>
 
-          {/* Main Content */}
-          <div className='col-span-12 lg:col-span-9'>
+          {/* Main Content Area */}
+          <div className='col-span-12 lg:col-span-9 space-y-6'>
+            {/* Original Issues Section */}
             <div className='bg-white rounded-xl shadow-lg p-6'>
               <h2 className='text-xl font-bold text-gray-800 mb-6'>
                 DOM Elements with Issues
@@ -267,6 +345,64 @@ function AIFix() {
 
               {/* Elements List */}
               <div className='space-y-6'>
+                {/* Missing Alt Attributes Section */}
+                {scannedElements.filter(
+                  (element) =>
+                    element.tag === "img" &&
+                    (!element.attributes.find((attr) => attr.name === "alt") ||
+                      element.attributes.find(
+                        (attr) => attr.name === "alt" && attr.value === ""
+                      ))
+                ).length > 0 && (
+                  <div className='border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow'>
+                    {/* Element Header */}
+                    <div className='mb-4'>
+                      <div className='flex items-center justify-between mb-2'>
+                        <h3 className='text-lg font-semibold text-gray-800'>
+                          Images Missing Alt Attributes
+                        </h3>
+                        <div className='flex gap-2'>
+                          <span className='px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border-green-200'>
+                            Accessibility
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Images List */}
+                    <div className='space-y-4'>
+                      {scannedElements
+                        .filter(
+                          (element) =>
+                            element.tag === "img" &&
+                            (!element.attributes.find(
+                              (attr) => attr.name === "alt"
+                            ) ||
+                              element.attributes.find(
+                                (attr) =>
+                                  attr.name === "alt" && attr.value === ""
+                              ))
+                        )
+                        .map((element, index) => (
+                          <div
+                            key={index}
+                            className='border-t border-gray-100 pt-4'
+                          >
+                            <code className='block text-black text-sm font-mono bg-gray-100 p-3 rounded'>
+                              {`<img ${element.attributes
+                                .map((attr) => `${attr.name}="${attr.value}"`)
+                                .join(" ")}>`}
+                            </code>
+                            <div className='mt-2 text-sm text-gray-600'>
+                              Found at: {element.location || "Unknown location"}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Original Elements with Issues */}
                 {filteredElements.map((selector, index) => {
                   const elementIssues = groupedIssues[selector].filter(
                     (issue) =>
@@ -282,8 +418,111 @@ function AIFix() {
                       {/* Element Header */}
                       <div className='mb-4'>
                         <div className='flex items-center justify-between mb-2'>
-                          <code className='text-black bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono'>
-                            {selector}
+                          <code className='text-black bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono whitespace-pre'>
+                            {(() => {
+                              const parts = selector
+                                .split(" > ")
+                                .map((part) => {
+                                  // Split by both . and # but keep the delimiters
+                                  const segments = part.split(/([.#\[])/);
+                                  const tag = segments[0];
+
+                                  // Process segments to collect classes, ids, and other attributes
+                                  let classes = [];
+                                  let id = null;
+                                  let otherAttributes = {};
+
+                                  for (let i = 1; i < segments.length; i += 2) {
+                                    const delimiter = segments[i];
+                                    const value = segments[i + 1];
+
+                                    if (delimiter === ".") {
+                                      classes.push(value);
+                                    } else if (delimiter === "#") {
+                                      id = value;
+                                    } else if (delimiter === "[") {
+                                      // Handle attribute selectors [attr="value"]
+                                      const attrMatch = value.match(
+                                        /([^=\]]+)(?:="([^"]*)")?\]/
+                                      );
+                                      if (attrMatch) {
+                                        const [, attrName, attrValue] =
+                                          attrMatch;
+                                        otherAttributes[attrName] =
+                                          attrValue || "";
+                                      }
+                                    }
+                                  }
+
+                                  // Get element's actual attributes from the issues
+                                  const elementIssue = elementIssues.find(
+                                    (issue) =>
+                                      issue.element?.attributes?.some(
+                                        (attr) =>
+                                          (attr.name === "class" &&
+                                            attr.value === classes.join(" ")) ||
+                                          (attr.name === "id" &&
+                                            attr.value === id)
+                                      )
+                                  );
+
+                                  if (elementIssue?.element?.attributes) {
+                                    elementIssue.element.attributes.forEach(
+                                      (attr) => {
+                                        if (
+                                          attr.name !== "class" &&
+                                          attr.name !== "id"
+                                        ) {
+                                          otherAttributes[attr.name] =
+                                            attr.value;
+                                        }
+                                      }
+                                    );
+                                  }
+
+                                  return {
+                                    tag,
+                                    classes: classes.length
+                                      ? classes.join(" ")
+                                      : null,
+                                    id,
+                                    attributes: otherAttributes,
+                                  };
+                                });
+
+                              let output = "";
+                              // Add opening tags with indentation
+                              parts.forEach((part, index) => {
+                                const indent = " ".repeat(index * 2);
+                                const attrs = [];
+
+                                if (part.id) attrs.push(`id="${part.id}"`);
+                                if (part.classes)
+                                  attrs.push(`class="${part.classes}"`);
+
+                                // Add other attributes
+                                Object.entries(part.attributes || {}).forEach(
+                                  ([key, value]) => {
+                                    attrs.push(`${key}="${value}"`);
+                                  }
+                                );
+
+                                const attributes = attrs.length
+                                  ? " " + attrs.join(" ")
+                                  : "";
+                                output += `${indent}<${part.tag}${attributes}>\n`;
+                              });
+
+                              // Add closing tags with proper indentation
+                              [...parts].reverse().forEach((part, index) => {
+                                const indent = " ".repeat(
+                                  (parts.length - 1 - index) * 2
+                                );
+                                output += `${indent}</${part.tag}>\n`;
+                              });
+
+                              return output.trim();
+                            })()}
                           </code>
                           <div className='flex gap-2'>
                             {Array.from(
@@ -306,7 +545,6 @@ function AIFix() {
                       <div className='space-y-4'>
                         {elementIssues.map((issue, issueIndex) => {
                           const suggestions = fixSuggestions[issue.title] || [];
-                          const validation = validationResults[issue.title];
 
                           return (
                             <div
@@ -322,32 +560,6 @@ function AIFix() {
                                     <span className='bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium'>
                                       Impact: {Math.round(issue.impact)}%
                                     </span>
-                                  )}
-                                  {fixedIssues[issue.title] ? (
-                                    <span className='bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium'>
-                                      Fixed
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={() =>
-                                        handleApplyFix(issue, suggestions[0])
-                                      }
-                                      disabled={fixingStatus[issue.title]}
-                                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                        fixingStatus[issue.title]
-                                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                          : "bg-blue-500 text-white hover:bg-blue-600"
-                                      }`}
-                                    >
-                                      {fixingStatus[issue.title] ? (
-                                        <div className='flex items-center gap-2'>
-                                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
-                                          Applying...
-                                        </div>
-                                      ) : (
-                                        "Apply This Fix"
-                                      )}
-                                    </button>
                                   )}
                                 </div>
                               </div>
@@ -370,26 +582,6 @@ function AIFix() {
                                         <p className='text-gray-700 font-medium'>
                                           {suggestion.description}
                                         </p>
-                                        <button
-                                          onClick={() =>
-                                            handleApplyFix(issue, suggestion)
-                                          }
-                                          disabled={fixingStatus[issue.title]}
-                                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                            fixingStatus[issue.title]
-                                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                              : "bg-blue-500 text-white hover:bg-blue-600"
-                                          }`}
-                                        >
-                                          {fixingStatus[issue.title] ? (
-                                            <div className='flex items-center gap-2'>
-                                              <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
-                                              Applying...
-                                            </div>
-                                          ) : (
-                                            "Apply This Fix"
-                                          )}
-                                        </button>
                                       </div>
 
                                       {suggestion.code && (
@@ -412,19 +604,6 @@ function AIFix() {
                                   ))}
                                 </div>
                               )}
-
-                              {/* Validation Results */}
-                              {validation && (
-                                <div
-                                  className={`mt-3 p-3 rounded-lg ${
-                                    validation.status === "success"
-                                      ? "bg-green-50 text-green-700"
-                                      : "bg-red-50 text-red-700"
-                                  }`}
-                                >
-                                  {validation.message}
-                                </div>
-                              )}
                             </div>
                           );
                         })}
@@ -443,6 +622,46 @@ function AIFix() {
                 )}
               </div>
             </div>
+
+            {/* Display scanned elements */}
+            {/* <div className='mt-8'>
+              <h2 className='text-2xl font-bold mb-4'>Scanned Elements</h2>
+              {isScanning ? (
+                <div className='text-gray-600'>
+                  Scanning website elements...
+                </div>
+              ) : scannedElements.length > 0 ? (
+                <div className='space-y-4'>
+                  {scannedElements.map((element, index) => (
+                    <div key={index} className='p-4 bg-white rounded-lg shadow'>
+                      <div className='flex items-center space-x-2'>
+                        <span className='font-mono text-blue-600'>
+                          {element.tag}
+                        </span>
+                        {element.id && (
+                          <span className='text-gray-600'>#{element.id}</span>
+                        )}
+                        {element.classes.length > 0 && (
+                          <span className='text-green-600'>
+                            .{element.classes.join(".")}
+                          </span>
+                        )}
+                      </div>
+                      {element.textContent && (
+                        <div className='mt-2 text-gray-700 truncate'>
+                          {element.textContent}
+                        </div>
+                      )}
+                      <div className='mt-2 text-sm text-gray-500'>
+                        Path: {element.path}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className='text-gray-600'>No elements scanned yet.</div>
+              )}
+            </div> */}
           </div>
         </div>
       </div>
