@@ -625,7 +625,7 @@ function Analyzer() {
                 <div className="flex items-center justify-center p-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-              ) : (
+              ) : aiAnalysis ? (
                 <div className="bg-[#F8FAFC] p-8 rounded-lg">
                   <div className="flex items-center gap-2 mb-6">
                     <svg
@@ -669,9 +669,9 @@ function Analyzer() {
                         </div>
                         <p className="text-gray-600">
                           {aiAnalysis
-                            .split("2. Critical Issues:")[0]
-                            .replace("1. Overall Assessment:", "")
-                            .trim()}
+                            ?.split("2. Critical Issues:")[0]
+                            ?.replace("1. Overall Assessment:", "")
+                            ?.trim()}
                         </p>
                       </div>
                     </div>
@@ -684,9 +684,9 @@ function Analyzer() {
                       <div className="bg-white p-4 rounded-lg mb-2">
                         <p className="text-gray-600">
                           {aiAnalysis
-                            .split("2. Critical Issues:")[1]
-                            .split("3. Key Recommendations:")[0]
-                            .trim()}
+                            ?.split("2. Critical Issues:")[1]
+                            ?.split("3. Key Recommendations:")[0]
+                            ?.trim()}
                         </p>
                       </div>
                     </div>
@@ -699,14 +699,14 @@ function Analyzer() {
                       <div className="bg-white p-4 rounded-lg mb-2">
                         <p className="text-gray-600">
                           {aiAnalysis
-                            .split("3. Key Recommendations:")[1]
-                            .trim()}
+                            ?.split("3. Key Recommendations:")[1]
+                            ?.trim()}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               <div className="text-lg font-semibold text-gray-600 my-6">
                 <div>Total Pages Scanned: {scanStats.pagesScanned}</div>
