@@ -180,11 +180,16 @@ function AIFix() {
   return (
     <div className='min-h-screen bg-gray-100 p-8'>
       <div className='max-w-6xl mx-auto'>
-        {/* Header with back button */}
-        <div className='flex items-center justify-between mb-6'>
+        {/* Logo */}
+        <div className='absolute top-4 left-4'>
+          <img src="/logo.svg" alt="Logo" className='w-28' />
+        </div>
+
+        {/* Header with back button - added mt-16 to move content down */}
+        <div className='flex items-center justify-between mb-6 mt-14'>
           <div className='flex items-center gap-4'>
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/analyzer")}
               className='p-2 rounded-lg'
             >
               <svg

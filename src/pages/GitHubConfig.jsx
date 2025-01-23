@@ -173,14 +173,17 @@ function GitHubConfig() {
 
   return (
     <div className='min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8'>
-      <div className='max-w-md mx-auto bg-white rounded-lg shadow-lg p-8'>
+      <div className='absolute top-8 left-8'>
+        <img src="/logo.svg" alt="Logo" className="h-12 w-auto" />
+      </div>
+      <div className='max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 mt-16'>
         <div className='flex items-center justify-between mb-6'>
           <h2 className='text-2xl font-bold text-gray-900'>
             GitHub Configuration
           </h2>
           <button
             onClick={() => navigate(-1)}
-            className='p-2 hover:bg-gray-100 rounded-full'
+            className='p-2 bg-transparent border border-black hover:bg-gray-100 rounded-full'
           >
             <svg
               className='w-6 h-6 text-gray-600'
