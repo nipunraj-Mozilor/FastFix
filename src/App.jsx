@@ -19,6 +19,39 @@ function App() {
 
   const navigate = useNavigate();
 
+  // Move getImpactLabel function here, before it's used
+  const getImpactLabel = (impact, type) => {
+    const impactNum = parseFloat(impact);
+    const thresholds = {
+      performance: {
+        critical: 25,
+        high: 15,
+        medium: 8,
+      },
+      accessibility: {
+        critical: 15,
+        high: 10,
+        medium: 5,
+      },
+      "best-practices": {
+        critical: 20,
+        high: 12,
+        medium: 6,
+      },
+      seo: {
+        critical: 18,
+        high: 10,
+        medium: 5,
+      },
+    };
+
+    const categoryThresholds = thresholds[type] || thresholds.performance;
+    if (impactNum >= categoryThresholds.critical) return "Critical";
+    if (impactNum >= categoryThresholds.high) return "High";
+    if (impactNum >= categoryThresholds.medium) return "Medium";
+    return "Low";
+  };
+
   // Shared utility function for score colors
   const getScoreColor = (score) => {
     if (typeof score !== "number" || isNaN(score)) return "#ef4444";
@@ -35,9 +68,15 @@ function App() {
 
     try {
       const response = await runLighthouseAnalysis(websiteUrl, (progress) => {
-        // Update scan stats with progress
         setScanStats(progress);
       });
+
+      // Update logging to use getImpactLabel after it's defined
+      console.log('Raw Lighthouse Response:', response);
+      console.log('Performance Score:', response.performance?.score);
+      console.log('Critical Issues:', response.performance?.issues?.filter(
+        issue => getImpactLabel(issue.impact, 'performance') === 'Critical'
+      ));
 
       setResults({
         performance: response.performance,
@@ -64,6 +103,87 @@ function App() {
   };
 
   const ScoreCard = ({ label, data }) => {
+    useEffect(() => {
+      if (data) {
+        console.log(`${label} Card Data:`, {
+          score: data.score,
+          metricsPresent: data.metrics ? Object.keys(data.metrics) : [],
+          auditCount: data.audits ? Object.keys(data.audits).length : 0,
+          details: data.details
+        });
+
+        // Validate metric values
+        if (data.metrics) {
+          Object.entries(data.metrics).forEach(([key, metric]) => {
+            if (metric && (metric.score < 0 || metric.score > 1)) {
+              console.warn(`Invalid metric score for ${key}:`, metric);
+            }
+          });
+        }
+      }
+    }, [label, data]);
+
+    // Add null check for data
+    if (!data) return null;
+
+    const renderMetricItem = (title, metric) => {
+      // Add null check for metric
+      if (!metric) return null;
+
+      const value = metric.displayValue || metric.value;
+      const score = metric.score || 0;
+
+      return (
+        <div className='flex items-center justify-between p-2 border-b border-gray-100 last:border-0'>
+          <span className='text-sm font-medium text-gray-600'>{title}</span>
+          <div className='flex items-center gap-2'>
+            <span className='text-sm text-gray-800'>
+              {typeof value === "number" ? Math.round(value) + "ms" : value}
+            </span>
+            <div
+              className='w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white'
+              style={{ backgroundColor: getScoreColor(score) }}
+            >
+              {typeof score === "number" ? Math.round(score) : 0}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const renderPerformanceMetrics = () => {
+      if (label !== "Performance" || !data.metrics) return null;
+
+      return (
+        <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
+          {data.metrics.fcp && renderMetricItem(
+            "First Contentful Paint",
+            data.metrics.fcp
+          )}
+          {data.metrics.lcp && renderMetricItem(
+            "Largest Contentful Paint",
+            data.metrics.lcp
+          )}
+          {data.metrics.tbt && renderMetricItem(
+            "Total Blocking Time",
+            data.metrics.tbt
+          )}
+          {data.metrics.cls && renderMetricItem(
+            "Cumulative Layout Shift",
+            data.metrics.cls
+          )}
+          {data.metrics.si && renderMetricItem(
+            "Speed Index",
+            data.metrics.si
+          )}
+          {data.metrics.tti && renderMetricItem(
+            "Time to Interactive",
+            data.metrics.tti
+          )}
+        </div>
+      );
+    };
+
     const renderAccessibilityAudits = () => {
       if (label !== "Accessibility" || !data.audits) return null;
 
@@ -90,62 +210,6 @@ function App() {
               <p className='text-xs text-gray-600'>{audit.description}</p>
             </div>
           ))}
-        </div>
-      );
-    };
-
-    const renderMetricItem = (title, value, score) => (
-      <div className='flex items-center justify-between p-2 border-b border-gray-100 last:border-0'>
-        <span className='text-sm font-medium text-gray-600'>{title}</span>
-        <div className='flex items-center gap-2'>
-          <span className='text-sm text-gray-800'>
-            {typeof value === "number" ? Math.round(value) + "ms" : value}
-          </span>
-          <div
-            className='w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white'
-            style={{ backgroundColor: getScoreColor(score) }}
-          >
-            {typeof score === "number" ? Math.round(score) : 0}
-          </div>
-        </div>
-      </div>
-    );
-
-    const renderPerformanceMetrics = () => {
-      if (label !== "Performance" || !data.metrics) return null;
-
-      return (
-        <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
-          {renderMetricItem(
-            "First Contentful Paint",
-            data.metrics.fcp.displayValue,
-            data.metrics.fcp.score
-          )}
-          {renderMetricItem(
-            "Largest Contentful Paint",
-            data.metrics.lcp.displayValue,
-            data.metrics.lcp.score
-          )}
-          {renderMetricItem(
-            "Total Blocking Time",
-            data.metrics.tbt.displayValue,
-            data.metrics.tbt.score
-          )}
-          {renderMetricItem(
-            "Cumulative Layout Shift",
-            data.metrics.cls.displayValue,
-            data.metrics.cls.score
-          )}
-          {renderMetricItem(
-            "Speed Index",
-            data.metrics.si.displayValue,
-            data.metrics.si.score
-          )}
-          {renderMetricItem(
-            "Time to Interactive",
-            data.metrics.tti.displayValue,
-            data.metrics.tti.score
-          )}
         </div>
       );
     };
@@ -205,6 +269,61 @@ function App() {
     const [expandedRecommendations, setExpandedRecommendations] = useState({});
     const [aiRecommendations, setAiRecommendations] = useState({});
     const [loadingRecommendations, setLoadingRecommendations] = useState({});
+
+    // Add detailed validation logging
+    useEffect(() => {
+      if (results) {
+        console.log('Detailed Results Analysis:', {
+          performanceScore: results.performance?.score,
+          accessibilityScore: results.accessibility?.score,
+          bestPracticesScore: results.bestPractices?.score,
+          seoScore: results.seo?.score,
+          
+          performanceIssuesCount: results.performance?.issues?.length,
+          accessibilityIssuesCount: results.accessibility?.issues?.length,
+          bestPracticesIssuesCount: results.bestPractices?.issues?.length,
+          seoIssuesCount: results.seo?.issues?.length,
+          
+          // Sample of highest impact issues
+          topIssues: [
+            ...(results.performance?.issues || []),
+            ...(results.accessibility?.issues || []),
+            ...(results.bestPractices?.issues || []),
+            ...(results.seo?.issues || [])
+          ]
+            .sort((a, b) => parseFloat(b.impact) - parseFloat(a.impact))
+            .slice(0, 5)
+            .map(issue => ({
+              type: issue.type,
+              title: issue.title,
+              impact: issue.impact,
+              score: issue.score
+            }))
+        });
+
+        // Validate impact calculations
+        results.performance?.issues?.forEach(issue => {
+          if (issue.impact > 100) {
+            console.warn('Suspicious impact value:', {
+              title: issue.title,
+              impact: issue.impact,
+              score: issue.score,
+              type: issue.type
+            });
+          }
+        });
+      }
+    }, [results]);
+
+    // Add validation logging
+    useEffect(() => {
+      console.log('Performance Issues:', results.performance?.issues);
+      console.log('Issue Metrics:', {
+        cls: results.performance?.metrics?.cls,
+        lcp: results.performance?.metrics?.lcp,
+        speedIndex: results.performance?.metrics?.si
+      });
+    }, [results]);
 
     const toggleRecommendations = async (issueIndex, issue) => {
       setExpandedRecommendations((prev) => ({
@@ -266,41 +385,6 @@ function App() {
         default:
           return "text-gray-600";
       }
-    };
-
-    const getImpactLabel = (impact, type) => {
-      const impactNum = parseFloat(impact);
-
-      // Different thresholds based on category
-      const thresholds = {
-        performance: {
-          critical: 25, // Performance issues have higher impact thresholds
-          high: 15,
-          medium: 8,
-        },
-        accessibility: {
-          critical: 15, // Accessibility issues often have medium-range impacts
-          high: 10,
-          medium: 5,
-        },
-        "best-practices": {
-          critical: 20, // Best practices can significantly affect overall quality
-          high: 12,
-          medium: 6,
-        },
-        seo: {
-          critical: 18, // SEO issues can have varying levels of impact
-          high: 10,
-          medium: 5,
-        },
-      };
-
-      const categoryThresholds = thresholds[type] || thresholds.performance;
-
-      if (impactNum >= categoryThresholds.critical) return "Critical";
-      if (impactNum >= categoryThresholds.high) return "High";
-      if (impactNum >= categoryThresholds.medium) return "Medium";
-      return "Low";
     };
 
     const getImpactColor = (impact, type) => {
@@ -651,7 +735,7 @@ function App() {
                             fill='none'
                             stroke='currentColor'
                             viewBox='0 0 24 24'
-                          >
+for                          >
                             <path
                               strokeLinecap='round'
                               strokeLinejoin='round'

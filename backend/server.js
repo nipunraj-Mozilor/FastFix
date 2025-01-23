@@ -3,9 +3,11 @@ import cors from "cors";
 import lighthouse from "lighthouse";
 import * as chromeLauncher from "chrome-launcher";
 import puppeteer from "puppeteer";
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -150,6 +152,32 @@ async function analyzePage(page, url) {
     const audits = report.audits;
     const categories = report.categories;
 
+    // Add debug logging
+    console.log('Raw Lighthouse Categories:', {
+      performance: categories.performance.score,
+      accessibility: categories.accessibility.score,
+      bestPractices: categories['best-practices'].score,
+      seo: categories.seo.score
+    });
+
+    console.log('Sample Performance Metrics:', {
+      cls: audits['cumulative-layout-shift'].score,
+      lcp: audits['largest-contentful-paint'].score,
+      fcp: audits['first-contentful-paint'].score,
+      si: audits['speed-index'].score
+    });
+
+    // Log a few critical issues for verification
+    const criticalIssues = Object.values(audits)
+      .filter(audit => audit.score !== null && audit.score < 0.5)
+      .map(audit => ({
+        title: audit.title,
+        score: audit.score,
+        description: audit.description
+      }));
+    
+    console.log('Critical Issues Found:', criticalIssues);
+
     const extractIssues = (categoryName, categoryData) => {
       const issues = [];
       const auditRefs = categoryData.auditRefs || [];
@@ -171,23 +199,42 @@ async function analyzePage(page, url) {
       for (const ref of sortedRefs) {
         const audit = audits[ref.id];
         if (audit.score !== 1 && audit.score !== null) {
+          // Get raw values
+          const rawScore = audit.score || 0;     // Score is 0-1
+          const weight = ref.weight || 1;        // Weight is typically 0-1
+          const maxWeight = Math.max(...auditRefs.map(r => r.weight || 0));
+          
+          // Calculate relative impact (0-100 scale)
+          // Consider both the score and the relative weight of the audit
+          const normalizedImpact = (
+            ((1 - rawScore) * (weight / maxWeight) * 100)
+          ).toFixed(1);
+
+          console.log('Impact calculation:', {
+            auditTitle: audit.title,
+            rawScore,
+            weight,
+            maxWeight,
+            normalizedImpact,
+            type: categoryName.toLowerCase()
+          });
+
           const issue = {
             type: categoryName.toLowerCase(),
             title: audit.title,
             description: audit.description,
             score: audit.score * 100,
-            impact: ((1 - audit.score) * (ref.weight || 1) * 100).toFixed(1),
+            impact: normalizedImpact,
             weight: ref.weight,
             items: audit.details?.items || [],
-            recommendations:
-              audit.details?.items
-                ?.map((item) => ({
-                  snippet: item.node?.snippet || item.source || "",
-                  selector: item.node?.selector || "",
-                  suggestion: item.suggestion || audit.description,
-                }))
-                .filter((rec) => rec.snippet || rec.selector)
-                .slice(0, 3) || [],
+            recommendations: audit.details?.items
+              ?.map((item) => ({
+                snippet: item.node?.snippet || item.source || "",
+                selector: item.node?.selector || "",
+                suggestion: item.suggestion || audit.description,
+              }))
+              .filter((rec) => rec.snippet || rec.selector)
+              .slice(0, 3) || [],
           };
           issues.push(issue);
         }
@@ -358,7 +405,7 @@ async function scanWebsite(url, sendProgress) {
 
 app.post("/analyze", async (req, res) => {
   const { url } = req.body;
-
+  
   if (!url) {
     return res.status(400).json({ error: "URL is required" });
   }
@@ -376,7 +423,7 @@ app.post("/analyze", async (req, res) => {
     };
 
     const scanResults = await scanWebsite(url, sendProgress);
-
+    
     // Return the final results
     const mainResults = scanResults.urls[0]?.scores || {
       performance: { score: 0 },
