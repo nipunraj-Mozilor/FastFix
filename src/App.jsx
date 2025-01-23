@@ -150,6 +150,62 @@ function App() {
       );
     };
 
+    const renderAccessibilityMetrics = () => {
+      if (label !== "Accessibility" || !data.issues) return null;
+
+      // Filter and transform accessibility issues with more flexible matching
+      const findIssue = (keywords) => {
+        return data.issues.find(i => 
+          keywords.some(keyword => i.title.toLowerCase().includes(keyword))
+        );
+      };
+
+      const metrics = {
+        colorContrast: findIssue(['contrast', 'color']),
+        headings: findIssue(['heading', 'h1', 'h2', 'h3', 'header']),
+        aria: findIssue(['aria', 'accessible name', 'role']),
+        imageAlts: findIssue(['image', 'alt', 'img']),
+        linkNames: findIssue(['link', 'anchor', 'href'])
+      };
+
+      // Get all accessibility issues that don't have a perfect score
+      const allIssues = data.issues.filter(issue => issue.score < 100);
+
+      // If we have issues but didn't categorize them, they might belong to one of our categories
+      allIssues.forEach(issue => {
+        if (!Object.values(metrics).includes(issue)) {
+          // Try to categorize the uncategorized issue
+          if (issue.title.toLowerCase().includes('color') || issue.title.toLowerCase().includes('contrast')) {
+            metrics.colorContrast = issue;
+          } else if (issue.title.toLowerCase().includes('structure') || issue.title.toLowerCase().includes('heading')) {
+            metrics.headings = issue;
+          } else if (issue.title.toLowerCase().includes('aria') || issue.title.toLowerCase().includes('role')) {
+            metrics.aria = issue;
+          }
+        }
+      });
+
+      return (
+        <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
+          {Object.entries(metrics).map(([key, issue]) => {
+            const title = {
+              colorContrast: "Color Contrast",
+              headings: "Headings",
+              aria: "ARIA",
+              imageAlts: "Image Alts",
+              linkNames: "Link Names"
+            }[key];
+
+            return renderMetricItem(
+              title,
+              issue ? `${issue.items?.length || 0} issues` : "Pass",
+              issue ? issue.score : 100
+            );
+          })}
+        </div>
+      );
+    };
+
     const renderAuditDetails = () => {
       if (!data.details) return null;
 
@@ -193,8 +249,8 @@ function App() {
             {Math.round(data.score)}%
           </div>
         </div>
-        {renderPerformanceMetrics()}
-        {renderAccessibilityAudits()}
+        {label === "Performance" && renderPerformanceMetrics()}
+        {label === "Accessibility" && renderAccessibilityMetrics()}
         {renderAuditDetails()}
       </div>
     );
