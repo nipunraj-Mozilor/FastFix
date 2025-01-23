@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { runLighthouseAnalysis } from "../services/lighthouse";
 import { getAIAnalysis, getIssueRecommendations } from "../services/langchain";
+import { supabase } from "../lib/supabase";
 
 function Analyzer() {
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -15,10 +16,46 @@ function Analyzer() {
     totalPages: 0,
     scannedUrls: [],
   });
+  const [analysisId, setAnalysisId] = useState(null);
 
   const navigate = useNavigate();
+  const { id } = useParams();
 
-  // Move getImpactLabel function here, before it's used
+  useEffect(() => {
+    if (id) {
+      loadAnalysis(id);
+    }
+  }, [id]);
+
+  const loadAnalysis = async (id) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('website_analyses')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setWebsiteUrl(data.website_url);
+        setResults({
+          performance: data.lighthouse_results.performance,
+          accessibility: data.lighthouse_results.accessibility,
+          bestPractices: data.lighthouse_results.bestPractices,
+          seo: data.lighthouse_results.seo,
+        });
+        setAiAnalysis(data.ai_analysis);
+        setScanStats(data.scan_stats);
+      }
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getImpactLabel = (impact, type) => {
     const impactNum = parseFloat(impact);
     const thresholds = {
@@ -51,7 +88,6 @@ function Analyzer() {
     return "Low";
   };
 
-  // Shared utility function for score colors
   const getScoreColor = (score) => {
     if (typeof score !== "number" || isNaN(score)) return "#ef4444";
     return score >= 90 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
@@ -66,6 +102,21 @@ function Analyzer() {
     setScanStats({ pagesScanned: 0, totalPages: 0, scannedUrls: [] });
 
     try {
+      const { data: analysis, error: dbError } = await supabase
+        .from('website_analyses')
+        .insert([
+          {
+            website_url: websiteUrl,
+            status: 'pending',
+          }
+        ])
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+      
+      setAnalysisId(analysis.id);
+
       const response = await runLighthouseAnalysis(websiteUrl, (progress) => {
         setScanStats(progress);
       });
@@ -86,17 +137,44 @@ function Analyzer() {
         seo: response.seo,
       });
 
-      // Get AI Analysis
       setAiLoading(true);
-      const analysis = await getAIAnalysis(response);
-      setAiAnalysis(analysis);
+      const aiAnalysisResult = await getAIAnalysis(response);
+      setAiAnalysis(aiAnalysisResult);
 
-      // Final scan stats update
       if (response.scanStats) {
         setScanStats(response.scanStats);
       }
+
+      await supabase
+        .from('website_analyses')
+        .update({
+          status: 'completed',
+          performance_score: response.performance.score,
+          accessibility_score: response.accessibility.score,
+          best_practices_score: response.bestPractices.score,
+          seo_score: response.seo.score,
+          scan_stats: scanStats,
+          lighthouse_results: {
+            performance: response.performance,
+            accessibility: response.accessibility,
+            bestPractices: response.bestPractices,
+            seo: response.seo,
+          },
+          ai_analysis: aiAnalysisResult,
+        })
+        .eq('id', analysis.id);
+
+      navigate(`/analyze/${analysis.id}`);
     } catch (err) {
       setError(err.message);
+      if (analysisId) {
+        await supabase
+          .from('website_analyses')
+          .update({
+            status: 'failed',
+          })
+          .eq('id', analysisId);
+      }
     } finally {
       setLoading(false);
       setAiLoading(false);
@@ -620,7 +698,6 @@ function Analyzer() {
                 Analysis Results
               </h2>
 
-              {/* AI Analysis Section */}
               {aiLoading ? (
                 <div className="flex items-center justify-center p-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -645,7 +722,6 @@ function Analyzer() {
                   </div>
 
                   <div className="space-y-6">
-                    {/* Overall Assessment */}
                     <div>
                       <h4 className="text-lg font-medium mb-4">
                         1. Overall Assessment:
@@ -676,7 +752,6 @@ function Analyzer() {
                       </div>
                     </div>
 
-                    {/* Critical Issues */}
                     <div>
                       <h4 className="text-lg font-medium mb-4">
                         2. Critical Issues:
@@ -691,7 +766,6 @@ function Analyzer() {
                       </div>
                     </div>
 
-                    {/* Recommendations */}
                     <div>
                       <h4 className="text-lg font-medium mb-4">
                         3. Key Recommendations:
