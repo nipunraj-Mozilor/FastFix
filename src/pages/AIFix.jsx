@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getFixSuggestions, applyFix, validateFix } from "../services/aiFix";
 import { scanWebsiteElements } from "../services/domScanner";
+import jsPDF from "jspdf";
 
 function AIFix() {
   const location = useLocation();
@@ -145,35 +146,141 @@ function AIFix() {
     }
   };
 
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    let yPos = 20;
+
+    // Add title
+    doc.setFontSize(16);
+    doc.text("Website Analysis Report", 20, yPos);
+    yPos += 20;
+
+    // Add scan statistics
+    doc.setFontSize(12);
+    doc.text(`Website URL: ${websiteUrl}`, 20, yPos);
+    yPos += 10;
+    doc.text(`Pages Scanned: ${scanStats.pagesScanned}`, 20, yPos);
+    yPos += 10;
+    doc.text(`Total Issues Found: ${issues.length}`, 20, yPos);
+    yPos += 20;
+
+    // Add issues and fixes
+    doc.setFontSize(14);
+    doc.text("Issues and AI Fixes:", 20, yPos);
+    yPos += 10;
+
+    issues.forEach((issue, index) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(12);
+      // Use title or description if available, fallback to a default message
+      const issueTitle =
+        issue.title || issue.description || "Issue details not available";
+      doc.text(`${index + 1}. Issue: ${issueTitle}`, 20, yPos);
+      yPos += 10;
+
+      // Add issue type and impact if available
+      if (issue.type || issue.impact) {
+        doc.setFontSize(10);
+        const typeText = issue.type ? `Type: ${issue.type}` : "";
+        const impactText = issue.impact
+          ? `Impact: ${Math.round(issue.impact)}%`
+          : "";
+        const infoText = [typeText, impactText].filter(Boolean).join(" | ");
+        if (infoText) {
+          doc.text(infoText, 30, yPos);
+          yPos += 10;
+        }
+      }
+
+      // Add fix suggestions
+      if (fixSuggestions[issue.title]) {
+        const suggestion = fixSuggestions[issue.title];
+        doc.setFontSize(10);
+        const suggestionText =
+          typeof suggestion === "string"
+            ? suggestion
+            : Array.isArray(suggestion)
+            ? suggestion[0]?.description || "Fix suggestion available"
+            : suggestion.description || "Fix suggestion available";
+        doc.text(`AI Fix Suggestion: ${suggestionText}`, 30, yPos);
+        yPos += 10;
+      }
+
+      // Add validation results if available
+      if (validationResults[issue.title]) {
+        const validation = validationResults[issue.title];
+        const validationText =
+          typeof validation === "string"
+            ? validation
+            : validation.message || "Validation completed";
+        doc.text(`Validation Result: ${validationText}`, 30, yPos);
+        yPos += 15;
+      }
+
+      // Add some spacing between issues
+      yPos += 5;
+    });
+
+    // Save the PDF
+    doc.save("website-analysis-report.pdf");
+  };
+
   return (
     <div className='min-h-screen bg-gray-100 p-8'>
       <div className='max-w-6xl mx-auto'>
         {/* Header with back button */}
-        <div className='flex items-center gap-4 mb-6'>
+        <div className='flex items-center justify-between mb-6'>
+          <div className='flex items-center gap-4'>
+            <button
+              onClick={() => navigate("/")}
+              className='p-2 hover:bg-gray-200 rounded-lg transition-colors'
+            >
+              <svg
+                className='w-6 h-6 text-gray-600'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M10 19l-7-7m0 0l7-7m-7 7h18'
+                />
+              </svg>
+            </button>
+            <div>
+              <h1 className='text-2xl font-bold text-gray-800'>
+                DOM Element Analysis
+              </h1>
+              <p className='text-gray-600'>
+                Analyzing {websiteUrl || "website"}
+              </p>
+            </div>
+          </div>
+
           <button
-            onClick={() => navigate("/")}
-            className='p-2 hover:bg-gray-200 rounded-lg transition-colors'
+            onClick={generatePDF}
+            className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center gap-2'
           >
             <svg
-              className='w-6 h-6 text-gray-600'
-              fill='none'
-              stroke='currentColor'
-              viewBox='0 0 24 24'
+              xmlns='http://www.w3.org/2000/svg'
+              className='h-5 w-5'
+              viewBox='0 0 20 20'
+              fill='currentColor'
             >
               <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M10 19l-7-7m0 0l7-7m-7 7h18'
+                fillRule='evenodd'
+                d='M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z'
+                clipRule='evenodd'
               />
             </svg>
+            Download Report
           </button>
-          <div>
-            <h1 className='text-2xl font-bold text-gray-800'>
-              DOM Element Analysis
-            </h1>
-            <p className='text-gray-600'>Analyzing {websiteUrl || "website"}</p>
-          </div>
         </div>
 
         {error && (
