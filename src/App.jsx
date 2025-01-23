@@ -126,25 +126,28 @@ function App() {
     // Add null check for data
     if (!data) return null;
 
-    const renderMetricItem = (title, metric) => {
-      // Add null check for metric
-      if (!metric) return null;
-
-      const value = metric.displayValue || metric.value;
-      const score = metric.score || 0;
+    // Single renderMetricItem function that handles both cases
+    const renderMetricItem = (title, value, score) => {
+      // Handle both metric object and direct value/score inputs
+      const displayValue = typeof value === 'object' 
+        ? value.displayValue || value.value 
+        : value;
+      const displayScore = typeof value === 'object'
+        ? value.score || 0
+        : score;
 
       return (
         <div className='flex items-center justify-between p-2 border-b border-gray-100 last:border-0'>
           <span className='text-sm font-medium text-gray-600'>{title}</span>
           <div className='flex items-center gap-2'>
             <span className='text-sm text-gray-800'>
-              {typeof value === "number" ? Math.round(value) + "ms" : value}
+              {typeof displayValue === "number" ? Math.round(displayValue) + "ms" : displayValue}
             </span>
             <div
               className='w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white'
-              style={{ backgroundColor: getScoreColor(score) }}
+              style={{ backgroundColor: getScoreColor(displayScore) }}
             >
-              {typeof score === "number" ? Math.round(score) : 0}
+              {typeof displayScore === "number" ? Math.round(displayScore) : 0}
             </div>
           </div>
         </div>
@@ -214,6 +217,62 @@ function App() {
       );
     };
 
+    const renderAccessibilityMetrics = () => {
+      if (label !== "Accessibility" || !data.issues) return null;
+
+      // Filter and transform accessibility issues with more flexible matching
+      const findIssue = (keywords) => {
+        return data.issues.find(i => 
+          keywords.some(keyword => i.title.toLowerCase().includes(keyword))
+        );
+      };
+
+      const metrics = {
+        colorContrast: findIssue(['contrast', 'color']),
+        headings: findIssue(['heading', 'h1', 'h2', 'h3', 'header']),
+        aria: findIssue(['aria', 'accessible name', 'role']),
+        imageAlts: findIssue(['image', 'alt', 'img']),
+        linkNames: findIssue(['link', 'anchor', 'href'])
+      };
+
+      // Get all accessibility issues that don't have a perfect score
+      const allIssues = data.issues.filter(issue => issue.score < 100);
+
+      // If we have issues but didn't categorize them, they might belong to one of our categories
+      allIssues.forEach(issue => {
+        if (!Object.values(metrics).includes(issue)) {
+          // Try to categorize the uncategorized issue
+          if (issue.title.toLowerCase().includes('color') || issue.title.toLowerCase().includes('contrast')) {
+            metrics.colorContrast = issue;
+          } else if (issue.title.toLowerCase().includes('structure') || issue.title.toLowerCase().includes('heading')) {
+            metrics.headings = issue;
+          } else if (issue.title.toLowerCase().includes('aria') || issue.title.toLowerCase().includes('role')) {
+            metrics.aria = issue;
+          }
+        }
+      });
+
+      return (
+        <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
+          {Object.entries(metrics).map(([key, issue]) => {
+            const title = {
+              colorContrast: "Color Contrast",
+              headings: "Headings",
+              aria: "ARIA",
+              imageAlts: "Image Alts",
+              linkNames: "Link Names"
+            }[key];
+
+            return renderMetricItem(
+              title,
+              issue ? `${issue.items?.length || 0} issues` : "Pass",
+              issue ? issue.score : 100
+            );
+          })}
+        </div>
+      );
+    };
+
     const renderAuditDetails = () => {
       if (!data.details) return null;
 
@@ -257,8 +316,8 @@ function App() {
             {Math.round(data.score)}%
           </div>
         </div>
-        {renderPerformanceMetrics()}
-        {renderAccessibilityAudits()}
+        {label === "Performance" && renderPerformanceMetrics()}
+        {label === "Accessibility" && renderAccessibilityMetrics()}
         {renderAuditDetails()}
       </div>
     );
@@ -735,7 +794,7 @@ function App() {
                             fill='none'
                             stroke='currentColor'
                             viewBox='0 0 24 24'
-for                          >
+                          >
                             <path
                               strokeLinecap='round'
                               strokeLinejoin='round'
