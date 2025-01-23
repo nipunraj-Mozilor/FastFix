@@ -621,11 +621,15 @@ function Analyzer() {
               </h2>
 
               {/* AI Analysis Section */}
-              {aiAnalysis && (
-                <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
-                  <div className="flex items-center gap-2 mb-3">
+              {aiLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="bg-[#F8FAFC] p-8 rounded-lg">
+                  <div className="flex items-center gap-2 mb-6">
                     <svg
-                      className="w-6 h-6 text-blue-600"
+                      className="w-6 h-6"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -637,23 +641,70 @@ function Analyzer() {
                         d="M13 10V3L4 14h7v7l9-11h-7z"
                       />
                     </svg>
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      AI Insights
-                    </h3>
+                    <h3 className="text-xl font-semibold">AI Insights</h3>
                   </div>
-                  {aiLoading ? (
-                    <div className="flex items-center justify-center p-4">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    </div>
-                  ) : (
-                    <div className="prose prose-blue max-w-none">
-                      {aiAnalysis.split("\n").map((line, index) => (
-                        <p key={index} className="text-gray-700 mb-2">
-                          {line}
+
+                  <div className="space-y-6">
+                    {/* Overall Assessment */}
+                    <div>
+                      <h4 className="text-lg font-medium mb-4">
+                        1. Overall Assessment:
+                      </h4>
+                      <div className="bg-white p-4 rounded-lg">
+                        <div className="mb-2">
+                          <div className="flex justify-between mb-2 font-medium">
+                            <span>Performance Score</span>
+                            <span>
+                              {Math.round(results.performance.score)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-black rounded-full h-2"
+                              style={{
+                                width: `${results.performance.score}%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                        <p className="text-gray-600">
+                          {aiAnalysis
+                            .split("2. Critical Issues:")[0]
+                            .replace("1. Overall Assessment:", "")
+                            .trim()}
                         </p>
-                      ))}
+                      </div>
                     </div>
-                  )}
+
+                    {/* Critical Issues */}
+                    <div>
+                      <h4 className="text-lg font-medium mb-4">
+                        2. Critical Issues:
+                      </h4>
+                      <div className="bg-white p-4 rounded-lg mb-2">
+                        <p className="text-gray-600">
+                          {aiAnalysis
+                            .split("2. Critical Issues:")[1]
+                            .split("3. Key Recommendations:")[0]
+                            .trim()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Recommendations */}
+                    <div>
+                      <h4 className="text-lg font-medium mb-4">
+                        3. Key Recommendations:
+                      </h4>
+                      <div className="bg-white p-4 rounded-lg mb-2">
+                        <p className="text-gray-600">
+                          {aiAnalysis
+                            .split("3. Key Recommendations:")[1]
+                            .trim()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
