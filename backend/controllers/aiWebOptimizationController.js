@@ -19,7 +19,7 @@ const analyzeWebsitePerformance = async (content, fileType) => {
     const llm = new ChatOpenAI({
         temperature: 0.7,
         modelName: "gpt-4",
-        openAIApiKey: config.openAIApiKey
+        openAIApiKey: process.env.OPENAI_API_KEY
     });
 
     const promptTemplate = `
@@ -30,40 +30,52 @@ CODE:
 
 Focus on these areas:
 1. Loading Speed:
-   - Resource optimization
-   - Code minification
-   - Lazy loading opportunities
-   - Caching strategies
+   - Resource optimization through code improvements
+   - Lazy loading for images and heavy content
+   - Async/defer script loading
+   - Remove unused code
+   - Optimize resource delivery
+   IMPORTANT: DO NOT suggest minified files (.min.js, .min.css) or CDN changes
 
 2. SEO Optimization:
-   - Meta tags
-   - Semantic HTML
-   - Content structure
-   - Accessibility
+   - Meta tags and descriptions
+   - Semantic HTML structure
+   - Header hierarchy
+   - Alt text for images
+   - Schema markup
+   - Content organization
 
 3. User Experience:
    - Mobile responsiveness
    - Core Web Vitals
    - Interactive elements
    - Loading indicators
+   - Form validation
+   - Error handling
+   - Accessibility improvements
 
 4. Best Practices:
    - Browser compatibility
    - Performance patterns
    - Error handling
    - Security considerations
+   - HTML5 standards
+   - ARIA attributes
 
-Return a JSON array of changes. Each object in the array must have these properties:
-- findText (string): the exact code to replace
-- replaceText (string): the optimized code
-- reason (string): explanation of the improvement
-- category (string): must be one of: speed, seo, ux, security
-- impact (string): must be one of: high, medium, low
+STRICT REQUIREMENTS:
+1. DO NOT suggest any .min.js or .min.css files
+2. DO NOT suggest CDN changes
+3. DO NOT modify existing file paths
+4. Keep all resource paths relative
+5. Focus on code-level improvements only
+6. Maintain existing file structure
 
-For example, to add lazy loading to images, you would return:
-A JSON array containing an object with findText as the original img tag, replaceText as the img tag with lazy loading, reason explaining the performance benefit, category as "speed", and impact as "high".
-
-Remember to escape any special characters in the code snippets and ensure the response is valid JSON.`;
+Return a JSON array of changes. Each object must have:
+- findText (string): exact code to replace
+- replaceText (string): optimized code
+- reason (string): explanation of improvement
+- category (string): speed|seo|ux|security
+- impact (string): high|medium|low`;
 
     const prompt = PromptTemplate.fromTemplate(promptTemplate);
 
@@ -77,8 +89,35 @@ Remember to escape any special characters in the code snippets and ensure the re
         
         try {
             const parsedResponse = JSON.parse(response.content);
-            console.log('Parsed AI suggestions:', JSON.stringify(parsedResponse, null, 2));
-            return parsedResponse;
+            
+            // Filter out any suggestions that include minified files or CDN changes
+            const filteredResponse = parsedResponse.filter(suggestion => {
+                const hasMinFile = suggestion.replaceText.includes('.min.js') || 
+                                 suggestion.replaceText.includes('.min.css');
+                const hasCDN = suggestion.replaceText.includes('cdn.') || 
+                              suggestion.replaceText.includes('//unpkg.com') ||
+                              suggestion.replaceText.includes('//cdnjs.') ||
+                              suggestion.replaceText.includes('//jsdelivr.');
+                
+                // Check if the suggestion modifies existing file paths
+                const modifiesPath = (originalPath, newPath) => {
+                    const pathRegex = /(?:src|href)=["'](.*?)["']/g;
+                    const originalPaths = [...originalPath.matchAll(pathRegex)].map(m => m[1]);
+                    const newPaths = [...newPath.matchAll(pathRegex)].map(m => m[1]);
+                    
+                    return originalPaths.some((path, index) => {
+                        // Allow changes to add attributes but not modify paths
+                        return newPaths[index] && !newPaths[index].includes(path);
+                    });
+                };
+
+                const changesPath = modifiesPath(suggestion.findText, suggestion.replaceText);
+
+                return !hasMinFile && !hasCDN && !changesPath;
+            });
+
+            console.log('Filtered AI suggestions:', JSON.stringify(filteredResponse, null, 2));
+            return filteredResponse;
         } catch (parseError) {
             console.error('Failed to parse AI response:', response.content);
             return [];
