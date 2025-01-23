@@ -501,7 +501,7 @@ function Analyzer() {
 
               <button
                 onClick={() => toggleRecommendations(index, issue)}
-                className='mt-4 text-blue-600 hover:text-blue-800 flex items-center gap-2'
+                className='mt-4 text-white hover:text-blue-800 flex items-center gap-2'
               >
                 {expandedRecommendations[index] ? "Hide" : "Show"} AI
                 Recommendations
@@ -593,6 +593,10 @@ function Analyzer() {
 
   return (
     <div className='w-full min-h-screen bg-gray-100 text-black'>
+      <div className='fixed top-4 left-4'>
+        <img src="/logo.svg" alt="Logo" className='w-28 h-12' />
+      </div>
+
       <div className='flex flex-col items-center min-h-screen px-8 py-16'>
         <div className='max-w-2xl'>
           <h4 className='text-3xl font-bold mb-4 text-center'>
