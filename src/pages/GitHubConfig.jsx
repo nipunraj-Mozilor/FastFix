@@ -265,24 +265,7 @@ function GitHubConfig() {
             />
           </div>
 
-          <div>
-            <label
-              htmlFor='defaultBranch'
-              className='block text-sm font-medium text-gray-700'
-            >
-              Default Branch
-            </label>
-            <input
-              type='text'
-              name='defaultBranch'
-              id='defaultBranch'
-              value={formData.defaultBranch}
-              onChange={handleChange}
-              required
-              className='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-              placeholder='e.g., main'
-            />
-          </div>
+         
 
           <div className='flex justify-end'>
             <button
