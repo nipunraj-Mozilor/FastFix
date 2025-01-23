@@ -19,6 +19,13 @@ function AIFix() {
   const [error, setError] = useState(null);
   const [scannedElements, setScannedElements] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [githubDetails, setGithubDetails] = useState({
+    token: "",
+    owner: "",
+    repo: "",
+  });
+  const [currentSuggestion, setCurrentSuggestion] = useState(null);
 
   // Scan website elements
   useEffect(() => {
@@ -177,16 +184,68 @@ function AIFix() {
     doc.save("website-analysis-report.pdf");
   };
 
+  const handleApplyFix = (suggestion) => {
+    setCurrentSuggestion(suggestion);
+    setShowModal(true);
+  };
+
+  const handleSubmitGithubDetails = async () => {
+    if (!currentSuggestion) {
+      setError("No suggestion selected");
+      return;
+    }
+
+    try {
+      setLoadingStates((prev) => ({ ...prev, submitting: true }));
+
+      // Find the current issue and get all its suggestions
+      const currentIssue = issues.find((issue) =>
+        fixSuggestions[issue.title]?.includes(currentSuggestion)
+      );
+      const allSuggestionsForIssue = currentIssue
+        ? fixSuggestions[currentIssue.title]
+        : [];
+
+      // Get all descriptions from the suggestions and join them with commas
+      const suggestionsString = allSuggestionsForIssue
+        .map((sug) => sug.description)
+        .join(", ");
+
+      const response = await fetch("/api/repo/ai-optimize-specific", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          githubToken: githubDetails.token,
+          owner: githubDetails.owner,
+          repo: githubDetails.repo,
+          suggestion: suggestionsString,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to apply fix");
+      }
+
+      const data = await response.json();
+      console.log("Fix applied successfully:", data);
+      setShowModal(false);
+      setCurrentSuggestion(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, submitting: false }));
+    }
+  };
+
   return (
     <div className='min-h-screen bg-gray-100 p-8'>
       <div className='max-w-6xl mx-auto'>
         {/* Header with back button */}
         <div className='flex items-center justify-between mb-6'>
           <div className='flex items-center gap-4'>
-            <button
-              onClick={() => navigate("/")}
-              className='p-2 rounded-lg'
-            >
+            <button onClick={() => navigate("/")} className='p-2 rounded-lg'>
               <svg
                 className='w-6 h-6 text-white'
                 fill='none'
@@ -211,25 +270,113 @@ function AIFix() {
             </div>
           </div>
 
-          <button
-            onClick={generatePDF}
-            className='bg-black text-white px-4 py-2 rounded hover:bg-gray-800 flex items-center gap-2'
-          >
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              className='h-5 w-5'
-              viewBox='0 0 20 20'
-              fill='currentColor'
+          <div className='flex gap-4'>
+            <button
+              onClick={generatePDF}
+              className='bg-black text-white px-4 py-2 rounded hover:bg-gray-800 flex items-center gap-2'
             >
-              <path
-                fillRule='evenodd'
-                d='M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z'
-                clipRule='evenodd'
-              />
-            </svg>
-            Download Report
-          </button>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                className='h-5 w-5'
+                viewBox='0 0 20 20'
+                fill='currentColor'
+              >
+                <path
+                  fillRule='evenodd'
+                  d='M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z'
+                  clipRule='evenodd'
+                />
+              </svg>
+              Download Report
+            </button>
+          </div>
         </div>
+
+        {/* GitHub Details Modal */}
+        {showModal && (
+          <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center'>
+            <div className='bg-white p-6 rounded-lg w-96'>
+              <h2 className='text-xl font-bold mb-4'>
+                GitHub Repository Details
+              </h2>
+              <div className='space-y-4'>
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>
+                    GitHub Token
+                  </label>
+                  <input
+                    type='password'
+                    value={githubDetails.token}
+                    onChange={(e) =>
+                      setGithubDetails({
+                        ...githubDetails,
+                        token: e.target.value,
+                      })
+                    }
+                    className='w-full p-2 border rounded'
+                    placeholder='Enter GitHub token'
+                  />
+                </div>
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>
+                    Repository Owner
+                  </label>
+                  <input
+                    type='text'
+                    value={githubDetails.owner}
+                    onChange={(e) =>
+                      setGithubDetails({
+                        ...githubDetails,
+                        owner: e.target.value,
+                      })
+                    }
+                    className='w-full p-2 border rounded'
+                    placeholder='Enter repository owner'
+                  />
+                </div>
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>
+                    Repository Name
+                  </label>
+                  <input
+                    type='text'
+                    value={githubDetails.repo}
+                    onChange={(e) =>
+                      setGithubDetails({
+                        ...githubDetails,
+                        repo: e.target.value,
+                      })
+                    }
+                    className='w-full p-2 border rounded'
+                    placeholder='Enter repository name'
+                  />
+                </div>
+                <div className='flex justify-end gap-4 mt-6'>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className='px-4 text-white py-2 text-gray-600 hover:text-gray-800'
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitGithubDetails}
+                    className='px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2'
+                    disabled={loadingStates.submitting}
+                  >
+                    {loadingStates.submitting ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
+                        Applying Fix...
+                      </>
+                    ) : (
+                      "Submit"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className='mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded'>
@@ -570,9 +717,19 @@ function AIFix() {
                               {/* Fix Suggestions */}
                               {suggestions.length > 0 && (
                                 <div className='bg-gray-50 rounded-lg p-4 space-y-3 mt-4'>
-                                  <h4 className='font-medium text-gray-800'>
-                                    AI Fix Suggestions:
-                                  </h4>
+                                  <div className='flex items-center justify-between'>
+                                    <h4 className='font-medium text-gray-800'>
+                                      AI Fix Suggestions:
+                                    </h4>
+                                    <button
+                                      onClick={() =>
+                                        handleApplyFix(suggestions[0])
+                                      }
+                                      className='bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm'
+                                    >
+                                      Apply Fix
+                                    </button>
+                                  </div>
                                   {suggestions.map((suggestion, sugIndex) => (
                                     <div
                                       key={sugIndex}
