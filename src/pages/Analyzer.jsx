@@ -31,9 +31,9 @@ function Analyzer() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('website_analyses')
-        .select('*')
-        .eq('id', id)
+        .from("website_analyses")
+        .select("*")
+        .eq("id", id)
         .single();
 
       if (error) throw error;
@@ -103,18 +103,18 @@ function Analyzer() {
 
     try {
       const { data: analysis, error: dbError } = await supabase
-        .from('website_analyses')
+        .from("website_analyses")
         .insert([
           {
             website_url: websiteUrl,
-            status: 'pending',
-          }
+            status: "pending",
+          },
         ])
         .select()
         .single();
 
       if (dbError) throw dbError;
-      
+
       setAnalysisId(analysis.id);
 
       const response = await runLighthouseAnalysis(websiteUrl, (progress) => {
@@ -142,15 +142,16 @@ function Analyzer() {
       setAiAnalysis(aiAnalysisResult);
 
       const finalScanStats = {
-        pagesScanned: response.scanStats?.pagesScanned || scanStats.pagesScanned,
+        pagesScanned:
+          response.scanStats?.pagesScanned || scanStats.pagesScanned,
         totalPages: response.scanStats?.totalPages || scanStats.totalPages,
         scannedUrls: response.scanStats?.scannedUrls || scanStats.scannedUrls,
       };
 
       const { error: updateError } = await supabase
-        .from('website_analyses')
+        .from("website_analyses")
         .update({
-          status: 'completed',
+          status: "completed",
           performance_score: response.performance.score,
           accessibility_score: response.accessibility.score,
           best_practices_score: response.bestPractices.score,
@@ -164,7 +165,7 @@ function Analyzer() {
           },
           ai_analysis: aiAnalysisResult,
         })
-        .eq('id', analysis.id);
+        .eq("id", analysis.id);
 
       if (updateError) throw updateError;
 
@@ -175,12 +176,12 @@ function Analyzer() {
       setError(err.message);
       if (analysisId) {
         await supabase
-          .from('website_analyses')
+          .from("website_analyses")
           .update({
-            status: 'failed',
+            status: "failed",
             scan_stats: scanStats,
           })
-          .eq('id', analysisId);
+          .eq("id", analysisId);
       }
     } finally {
       setLoading(false);
@@ -274,6 +275,105 @@ function Analyzer() {
       );
     };
 
+    const renderSEOMetrics = () => {
+      if (label !== "SEO" || !data.issues) return null;
+
+      const findIssue = (keywords) => {
+        return data.issues.find((i) =>
+          keywords.some((keyword) => i.title.toLowerCase().includes(keyword))
+        );
+      };
+
+      const metrics = {
+        metaDescription: findIssue(["meta description", "meta"]),
+        titleTags: findIssue(["title tag", "title element"]),
+        headingStructure: findIssue([
+          "heading",
+          "h1",
+          "h2",
+          "h3",
+          "header structure",
+        ]),
+        mobileOptimization: findIssue(["mobile", "viewport", "responsive"]),
+        urlStructure: findIssue(["url", "slug", "permalink"]),
+      };
+
+      return (
+        <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
+          {Object.entries(metrics).map(([key, issue]) => {
+            const title = {
+              metaDescription: "Meta Description",
+              titleTags: "Title Tags",
+              headingStructure: "Heading Structure",
+              mobileOptimization: "Mobile Optimization",
+              urlStructure: "URL Structure",
+            }[key];
+
+            return renderMetricItem(
+              title,
+              issue ? `${issue.items?.length || 0} issues` : "Pass",
+              issue ? issue.score : 100
+            );
+          })}
+        </div>
+      );
+    };
+
+    const renderBestPracticesMetrics = () => {
+      if (label !== "Best Practices" || !data.issues) return null;
+
+      const findIssue = (keywords) => {
+        return data.issues.find((i) =>
+          keywords.some((keyword) => i.title.toLowerCase().includes(keyword))
+        );
+      };
+
+      const metrics = {
+        https: findIssue(["https", "ssl", "secure"]),
+        doctype: findIssue(["doctype", "html5", "document type"]),
+        javascriptErrors: findIssue(["javascript", "error", "console"]),
+        mobileFriendly: findIssue(["mobile", "viewport", "responsive"]),
+        browserCompatibility: findIssue([
+          "browser",
+          "compatibility",
+          "support",
+        ]),
+      };
+
+      return (
+        <div className='mt-4 border rounded-lg overflow-hidden bg-gray-50'>
+          {Object.entries(metrics).map(([key, issue]) => {
+            const title = {
+              https: "HTTPS Usage",
+              doctype: "Valid Doctype",
+              javascriptErrors: "No JavaScript Errors",
+              mobileFriendly: "Mobile Friendly",
+              browserCompatibility: "Browser Compatibility",
+            }[key];
+
+            const symbol = !issue ? "✓" : "✗";
+            const symbolColor = !issue ? "text-green-600" : "text-red-600";
+
+            return (
+              <div
+                key={key}
+                className='flex items-center justify-between p-2 border-b border-gray-100 last:border-0'
+              >
+                <span className='text-sm font-medium text-gray-600'>
+                  {title}
+                </span>
+                <div className='flex items-center'>
+                  <span className={`text-2xl font-bold ${symbolColor}`}>
+                    {symbol}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
     const renderAuditDetails = () => {
       if (!data.details) return null;
 
@@ -319,6 +419,8 @@ function Analyzer() {
         </div>
         {label === "Performance" && renderPerformanceMetrics()}
         {label === "Accessibility" && renderAccessibilityMetrics()}
+        {label === "SEO" && renderSEOMetrics()}
+        {label === "Best Practices" && renderBestPracticesMetrics()}
         {renderAuditDetails()}
       </div>
     );
@@ -601,7 +703,7 @@ function Analyzer() {
   return (
     <div className='w-full min-h-screen bg-gray-100 text-black'>
       <div className='fixed top-4 left-4'>
-        <img src="/logo.svg" alt="Logo" className='w-28 h-12' />
+        <img src='/logo.svg' alt='Logo' className='w-28 h-12' />
       </div>
 
       <div className='flex flex-col items-center min-h-screen px-8 py-16'>
