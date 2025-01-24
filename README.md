@@ -59,3 +59,4 @@ cd backend && npm start
 - Supabase Integration
 - Lighthouse Integration
 - Puppeteer Integration
+

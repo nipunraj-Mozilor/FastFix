@@ -527,7 +527,8 @@ app.post("/api/scan-elements", async (req, res) => {
         return elements;
       };
 
-      return getAllElements(document.body);
+      // Changed from document.body to document.documentElement to scan all elements
+      return getAllElements(document.documentElement);
     });
 
     await browser.close();

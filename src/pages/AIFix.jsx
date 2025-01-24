@@ -504,6 +504,52 @@ function AIFix() {
 
               {/* Elements List */}
               <div className='space-y-6'>
+                {/* Meta Description Section */}
+                {scannedElements.filter(
+                  (element) =>
+                    element.tag === "meta" &&
+                    element.attributes.find(
+                      (attr) =>
+                        attr.name === "name" && attr.value === "description"
+                    )
+                ).length === 0 && (
+                  <div className='border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow'>
+                    {/* Element Header */}
+                    <div className='mb-4'>
+                      <div className='flex items-center justify-between mb-2'>
+                        <h3 className='text-lg font-semibold text-gray-800'>
+                          Missing Meta Description
+                        </h3>
+                        <div className='flex gap-2'>
+                          <span className='px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 border-orange-200'>
+                            SEO
+                          </span>
+                        </div>
+                      </div>
+                      <p className='text-gray-600 text-sm'>
+                        Your page is missing a meta description tag which is
+                        important for SEO.
+                      </p>
+                    </div>
+
+                    {/* Meta Description Fix */}
+                    <div className='bg-gray-50 p-4 rounded-lg'>
+                      <h4 className='font-medium text-gray-800 mb-2'>
+                        Suggested Fix:
+                      </h4>
+                      <code className='block text-black text-sm font-mono bg-gray-100 p-3 rounded'>
+                        {
+                          '<meta name="description" content="Add your website description here">'
+                        }
+                      </code>
+                      <p className='mt-2 text-sm text-gray-600'>
+                        Add this tag inside your {"<head>"} section with a
+                        descriptive content that summarizes your page.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Missing Alt Attributes Section */}
                 {scannedElements.filter(
                   (element) =>
