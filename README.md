@@ -25,7 +25,6 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ### Backend (backend/.env)
 
 ```env
-PORT=3000
 OPENAI_API_KEY=your_openai_api_key
 FRONTEND_URL=http://localhost:5173
 ```
