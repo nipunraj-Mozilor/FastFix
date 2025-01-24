@@ -251,7 +251,10 @@ function AIFix() {
         {/* Header with back button */}
         <div className='flex items-center justify-between mb-6'>
           <div className='flex items-center gap-4'>
-            <button onClick={() => navigate("/")} className='p-2 rounded-lg'>
+            <button
+              onClick={() => navigate("/analyzer")}
+              className='p-2 rounded-lg'
+            >
               <svg
                 className='w-6 h-6 text-white'
                 fill='none'
