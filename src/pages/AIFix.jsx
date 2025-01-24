@@ -26,6 +26,8 @@ function AIFix() {
     repo: "",
   });
   const [currentSuggestion, setCurrentSuggestion] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [fixResults, setFixResults] = useState(null);
 
   // Scan website elements
   useEffect(() => {
@@ -229,7 +231,8 @@ function AIFix() {
       }
 
       const data = await response.json();
-      console.log("Fix applied successfully:", data);
+      setSuccessMessage("Fix applied successfully!");
+      setFixResults(data);
 
       // Open diff URL in new tab if available
       if (data.success && data.data.pullRequest?.diffUrl) {

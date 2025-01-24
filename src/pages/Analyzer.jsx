@@ -121,15 +121,6 @@ function Analyzer() {
         setScanStats(progress);
       });
 
-      console.log("Raw Lighthouse Response:", response);
-      console.log("Performance Score:", response.performance?.score);
-      console.log(
-        "Critical Issues:",
-        response.performance?.issues?.filter(
-          (issue) => getImpactLabel(issue.impact, "performance") === "Critical"
-        )
-      );
-
       setResults({
         performance: response.performance,
         accessibility: response.accessibility,
@@ -198,7 +189,10 @@ function Analyzer() {
       const displayScore = typeof value === "object" ? value.score || 0 : score;
 
       return (
-        <div className='flex items-center justify-between p-2 border-b border-gray-100 last:border-0'>
+        <div
+          key={title}
+          className='flex items-center justify-between p-2 border-b border-gray-100 last:border-0'
+        >
           <span className='text-sm font-medium text-gray-600'>{title}</span>
           <div className='flex items-center gap-2'>
             <span className='text-sm text-gray-800'>

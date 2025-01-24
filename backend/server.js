@@ -8,6 +8,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
+const DEBUG = process.env.DEBUG === "true";
 
 // Configure CORS
 app.use(

@@ -4,6 +4,8 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import path from "path";
 import { promises as fs } from "fs";
 
+const DEBUG = process.env.DEBUG === "true";
+
 const getGitConfig = async () => {
   try {
     const configPath = path.join(process.cwd(), "config.json");
@@ -21,7 +23,7 @@ const analyzeWebsitePerformance = async (content, fileType) => {
     const llm = new ChatOpenAI({
       temperature: 0.7,
       modelName: "gpt-4",
-      openAIApiKey: process.env.OPENAI_API_KEY
+      openAIApiKey: process.env.OPENAI_API_KEY,
     });
 
     const promptTemplate = `
@@ -87,12 +89,14 @@ Return a JSON array of changes. Each object must have:
     });
 
     const response = await llm.invoke(formattedPrompt);
-    
+
     try {
       // Extract JSON array from the response if it's wrapped in markdown code blocks
       let jsonContent = response.content;
-      const jsonMatch = jsonContent.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
-      
+      const jsonMatch = jsonContent.match(
+        /```(?:json)?\s*(\[[\s\S]*?\])\s*```/
+      );
+
       if (jsonMatch) {
         jsonContent = jsonMatch[1];
       }
@@ -101,24 +105,32 @@ Return a JSON array of changes. Each object must have:
       const parsedResponse = JSON.parse(jsonContent);
 
       if (!Array.isArray(parsedResponse)) {
-        console.error('AI response is not an array:', parsedResponse);
+        console.error("AI response is not an array:", parsedResponse);
         return [];
       }
 
       // Filter out any suggestions that include minified files or CDN changes
-      const filteredResponse = parsedResponse.filter(suggestion => {
-        if (!suggestion.findText || !suggestion.replaceText || !suggestion.reason || !suggestion.category || !suggestion.impact) {
-          console.error('Invalid suggestion format:', suggestion);
+      const filteredResponse = parsedResponse.filter((suggestion) => {
+        if (
+          !suggestion.findText ||
+          !suggestion.replaceText ||
+          !suggestion.reason ||
+          !suggestion.category ||
+          !suggestion.impact
+        ) {
+          console.error("Invalid suggestion format:", suggestion);
           return false;
         }
 
-        const hasMinFile = suggestion.replaceText.includes('.min.js') || 
-                         suggestion.replaceText.includes('.min.css');
-        const hasCDN = suggestion.replaceText.includes('cdn.') || 
-                      suggestion.replaceText.includes('//unpkg.com') ||
-                      suggestion.replaceText.includes('//cdnjs.') ||
-                      suggestion.replaceText.includes('//jsdelivr.');
-        
+        const hasMinFile =
+          suggestion.replaceText.includes(".min.js") ||
+          suggestion.replaceText.includes(".min.css");
+        const hasCDN =
+          suggestion.replaceText.includes("cdn.") ||
+          suggestion.replaceText.includes("//unpkg.com") ||
+          suggestion.replaceText.includes("//cdnjs.") ||
+          suggestion.replaceText.includes("//jsdelivr.");
+
         // Check if the suggestion modifies existing file paths
         const modifiesPath = (originalPath, newPath) => {
           const pathRegex = /(?:src|href)=["'](.*?)["']/g;
@@ -141,15 +153,20 @@ Return a JSON array of changes. Each object must have:
         return !hasMinFile && !hasCDN && !changesPath;
       });
 
-      console.log('Filtered AI suggestions:', JSON.stringify(filteredResponse, null, 2));
+      if (DEBUG) {
+        console.log(
+          "Filtered AI suggestions:",
+          JSON.stringify(filteredResponse, null, 2)
+        );
+      }
       return filteredResponse;
     } catch (parseError) {
-      console.error('Failed to parse AI response:', response.content);
-      console.error('Parse error:', parseError);
+      console.error("Failed to parse AI response:", response.content);
+      console.error("Parse error:", parseError);
       return [];
     }
   } catch (error) {
-    console.error('Error in performance analysis:', error);
+    console.error("Error in performance analysis:", error);
     return [];
   }
 };
@@ -159,17 +176,19 @@ export const optimizeWebsite = async (req, res) => {
     const { githubToken, owner, repo } = req.body;
 
     if (!githubToken || !owner || !repo) {
-      throw new Error('Missing required parameters: githubToken, owner, and repo are required');
+      throw new Error(
+        "Missing required parameters: githubToken, owner, and repo are required"
+      );
     }
 
     const octokit = new Octokit({
-      auth: githubToken
+      auth: githubToken,
     });
 
     // Get repository info to find the default branch
     const { data: repoInfo } = await octokit.repos.get({
       owner,
-      repo
+      repo,
     });
 
     const defaultBranch = repoInfo.default_branch;
@@ -179,14 +198,14 @@ export const optimizeWebsite = async (req, res) => {
     const { data: ref } = await octokit.git.getRef({
       owner,
       repo,
-      ref: `heads/${defaultBranch}`
+      ref: `heads/${defaultBranch}`,
     });
 
     await octokit.git.createRef({
       owner,
       repo,
       ref: `refs/heads/${branchName}`,
-      sha: ref.object.sha
+      sha: ref.object.sha,
     });
 
     // Get repository files
@@ -194,7 +213,7 @@ export const optimizeWebsite = async (req, res) => {
       owner,
       repo,
       tree_sha: ref.object.sha,
-      recursive: "true"
+      recursive: "true",
     });
 
     // Create a simplified results object
@@ -212,7 +231,9 @@ export const optimizeWebsite = async (req, res) => {
         const ext = path.extname(file.path).toLowerCase();
         if ([".html", ".css", ".js"].includes(ext)) {
           try {
-            console.log(`Analyzing ${file.path}...`);
+            if (DEBUG) {
+              console.log(`Analyzing ${file.path}...`);
+            }
             const { data: content } = await octokit.repos.getContent({
               owner,
               repo,
@@ -314,7 +335,7 @@ ${optimizationResults.changes
         title: "AI-Powered Website Optimization",
         body: prBody,
         head: branchName,
-        base: defaultBranch
+        base: defaultBranch,
       });
 
       // Add PR URLs to results
@@ -343,17 +364,19 @@ export const applySpecificOptimization = async (req, res) => {
     const { suggestion, githubToken, owner, repo } = req.body;
 
     if (!suggestion || !githubToken || !owner || !repo) {
-      throw new Error('Missing required parameters: suggestion, githubToken, owner, and repo are required');
+      throw new Error(
+        "Missing required parameters: suggestion, githubToken, owner, and repo are required"
+      );
     }
 
     const octokit = new Octokit({
-      auth: githubToken
+      auth: githubToken,
     });
 
     // Get repository info to find the default branch
     const { data: repoInfo } = await octokit.repos.get({
       owner,
-      repo
+      repo,
     });
 
     const defaultBranch = repoInfo.default_branch;
@@ -363,22 +386,22 @@ export const applySpecificOptimization = async (req, res) => {
     const { data: ref } = await octokit.git.getRef({
       owner,
       repo,
-      ref: `heads/${defaultBranch}`
+      ref: `heads/${defaultBranch}`,
     });
 
     await octokit.git.createRef({
       owner,
       repo,
       ref: `refs/heads/${branchName}`,
-      sha: ref.object.sha
+      sha: ref.object.sha,
     });
 
     const optimizationResults = {
       changes: [],
       pullRequest: {
-        url: '',
-        diffUrl: ''
-      }
+        url: "",
+        diffUrl: "",
+      },
     };
 
     // Get all files in the repository
@@ -386,22 +409,25 @@ export const applySpecificOptimization = async (req, res) => {
       owner,
       repo,
       tree_sha: ref.object.sha,
-      recursive: 'true'
+      recursive: "true",
     });
 
     // Process files to find optimization opportunities
     for (const file of tree.tree) {
-      if (file.type === 'blob') {
+      if (file.type === "blob") {
         const ext = path.extname(file.path).toLowerCase();
-        if (['.html', '.css', '.js'].includes(ext)) {
+        if ([".html", ".css", ".js"].includes(ext)) {
           try {
             const { data: content } = await octokit.repos.getContent({
               owner,
               repo,
-              path: file.path
+              path: file.path,
             });
 
-            const fileContent = Buffer.from(content.content, 'base64').toString();
+            const fileContent = Buffer.from(
+              content.content,
+              "base64"
+            ).toString();
 
             // Create a prompt that asks the AI to find and apply the suggestion
             const promptContent = `
@@ -429,26 +455,36 @@ IMPORTANT:
 
 Return an empty array if no opportunities are found.`;
 
-            const optimizations = await analyzeWebsitePerformance(promptContent, ext.substring(1));
-            
+            const optimizations = await analyzeWebsitePerformance(
+              promptContent,
+              ext.substring(1)
+            );
+
             if (optimizations && optimizations.length > 0) {
               let newContent = fileContent;
-              const lines = fileContent.split('\n');
-              
+              const lines = fileContent.split("\n");
+
               for (const opt of optimizations) {
-                if (opt.findText && opt.replaceText && newContent.includes(opt.findText)) {
+                if (
+                  opt.findText &&
+                  opt.replaceText &&
+                  newContent.includes(opt.findText)
+                ) {
                   // Find line numbers
                   let startLine = 1;
                   let endLine = 1;
                   for (let i = 0; i < lines.length; i++) {
                     if (lines[i].includes(opt.findText)) {
                       startLine = i + 1;
-                      endLine = startLine + opt.findText.split('\n').length - 1;
+                      endLine = startLine + opt.findText.split("\n").length - 1;
                       break;
                     }
                   }
 
-                  newContent = newContent.replace(opt.findText, opt.replaceText);
+                  newContent = newContent.replace(
+                    opt.findText,
+                    opt.replaceText
+                  );
                   optimizationResults.changes.push({
                     file: file.path,
                     startLine,
@@ -457,7 +493,7 @@ Return an empty array if no opportunities are found.`;
                     impact: opt.impact,
                     reason: opt.reason,
                     originalCode: opt.findText,
-                    newCode: opt.replaceText
+                    newCode: opt.replaceText,
                   });
                 }
               }
@@ -469,9 +505,9 @@ Return an empty array if no opportunities are found.`;
                   repo,
                   path: file.path,
                   message: `AI Optimization: Applied "${suggestion}" to ${file.path}`,
-                  content: Buffer.from(newContent).toString('base64'),
+                  content: Buffer.from(newContent).toString("base64"),
                   branch: branchName,
-                  sha: content.sha
+                  sha: content.sha,
                 });
               }
             }
@@ -488,8 +524,10 @@ Return an empty array if no opportunities are found.`;
 # AI-Powered Optimization: ${suggestion}
 
 ## Applied Changes
-${optimizationResults.changes.map(change => 
-    `### File: ${change.file} (lines ${change.startLine}-${change.endLine})
+${optimizationResults.changes
+  .map(
+    (change) =>
+      `### File: ${change.file} (lines ${change.startLine}-${change.endLine})
 - Category: ${change.category}
 - Impact: ${change.impact}
 - Reason: ${change.reason}
@@ -498,7 +536,8 @@ ${optimizationResults.changes.map(change =>
 - ${change.originalCode}
 + ${change.newCode}
 \`\`\``
-).join('\n\n')}`;
+  )
+  .join("\n\n")}`;
 
       const { data: pullRequest } = await octokit.pulls.create({
         owner,
@@ -506,25 +545,25 @@ ${optimizationResults.changes.map(change =>
         title: `AI Optimization: ${suggestion}`,
         body: prBody,
         head: branchName,
-        base: defaultBranch
+        base: defaultBranch,
       });
 
       optimizationResults.pullRequest = {
         url: pullRequest.html_url,
-        diffUrl: `${pullRequest.html_url}/files`
+        diffUrl: `${pullRequest.html_url}/files`,
       };
 
       res.json({
         success: true,
-        data: optimizationResults
+        data: optimizationResults,
       });
     } else {
-      throw new Error('No opportunities found to apply this optimization');
+      throw new Error("No opportunities found to apply this optimization");
     }
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message,
     });
   }
 };

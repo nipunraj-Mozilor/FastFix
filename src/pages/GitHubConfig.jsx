@@ -12,6 +12,8 @@ function GitHubConfig() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successData, setSuccessData] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [repositories, setRepositories] = useState([]);
 
   const getImpactColor = (impact) => {
     switch (impact) {
@@ -48,24 +50,22 @@ function GitHubConfig() {
     setSuccessData(null);
 
     try {
-      const response = await fetch("/api/repo/ai-optimize", {
+      const response = await fetch("/api/github/connect", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ code: formData.githubToken }),
       });
 
-      console.log("Response status:", response.status);
+      const data = await response.json();
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to connect repository");
+        throw new Error(data.message || "Failed to connect to GitHub");
       }
 
-      const data = await response.json();
-      console.log("Repository connected successfully:", data);
+      setIsConnected(true);
+      setRepositories(data.repositories || []);
       setSuccessData(data.data);
     } catch (err) {
       setError(err.message);
@@ -174,7 +174,7 @@ function GitHubConfig() {
   return (
     <div className='min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8'>
       <div className='absolute top-8 left-8'>
-        <img src="/logo.svg" alt="Logo" className="h-12 w-auto" />
+        <img src='/logo.svg' alt='Logo' className='h-12 w-auto' />
       </div>
       <div className='max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 mt-16'>
         <div className='flex items-center justify-between mb-6'>
@@ -264,8 +264,6 @@ function GitHubConfig() {
               placeholder='e.g., my-project'
             />
           </div>
-
-         
 
           <div className='flex justify-end'>
             <button
