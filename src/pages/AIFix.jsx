@@ -474,6 +474,8 @@ function AIFix() {
               </h2>
               <div className='space-y-3'>
                 {["performance", "accessibility", "seo"].map((category) => {
+                  console.log(issues);
+
                   const count = issues.filter(
                     (issue) => issue.type === category
                   ).length;

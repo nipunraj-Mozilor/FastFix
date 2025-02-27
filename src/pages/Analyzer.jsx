@@ -422,40 +422,7 @@ function Analyzer() {
 
   const IssueReport = ({ results }) => {
     const [selectedCategory, setSelectedCategory] = useState("all");
-    const [expandedRecommendations, setExpandedRecommendations] = useState({});
-    const [aiRecommendations, setAiRecommendations] = useState({});
-    const [loadingStates, setLoadingStates] = useState({});
     const [validationResults, setValidationResults] = useState({});
-
-    const toggleRecommendations = async (issueIndex, issue) => {
-      const newExpandedState = !expandedRecommendations[issueIndex];
-      setExpandedRecommendations((prev) => ({
-        ...prev,
-        [issueIndex]: newExpandedState,
-      }));
-
-      if (newExpandedState && !aiRecommendations[issueIndex]) {
-        try {
-          setLoadingStates((prev) => ({
-            ...prev,
-            [issueIndex]: true,
-          }));
-
-          const recommendations = await getIssueRecommendations(issue);
-          setAiRecommendations((prev) => ({
-            ...prev,
-            [issueIndex]: recommendations,
-          }));
-        } catch (error) {
-          console.error("Failed to get AI recommendations:", error);
-        } finally {
-          setLoadingStates((prev) => ({
-            ...prev,
-            [issueIndex]: false,
-          }));
-        }
-      }
-    };
 
     const allIssues = [
       ...(results.performance?.issues || []),
@@ -578,7 +545,7 @@ function Analyzer() {
                     <span className={`font-medium ${getTypeColor(issue.type)}`}>
                       {issue.type.charAt(0).toUpperCase() + issue.type.slice(1)}
                     </span>
-                    <span
+                    {/* <span
                       className={`text-xs px-2 py-1 rounded-full ${getImpactColor(
                         issue.impact,
                         issue.type
@@ -586,95 +553,72 @@ function Analyzer() {
                     >
                       {getImpactLabel(issue.impact, issue.type)} Impact (
                       {issue.impact}%)
-                    </span>
+                    </span> */}
                   </div>
                   <h3 className='text-lg font-semibold text-gray-800'>
                     {issue.title}
                   </h3>
                 </div>
-                <div
+                {/* <div
                   className='w-12 h-12 rounded-full flex items-center justify-center text-sm font-medium text-white'
                   style={{ backgroundColor: getScoreColor(issue.score / 100) }}
                 >
                   {Math.round(issue.score)}
-                </div>
+                </div> */}
               </div>
 
               <p className='text-gray-600 mb-4'>{issue.description}</p>
 
-              <button
-                onClick={() => toggleRecommendations(index, issue)}
-                className='mt-4 text-white hover:text-blue-800 flex items-center gap-2'
-              >
-                {expandedRecommendations[index] ? "Hide" : "Show"} AI
-                Recommendations
-                <svg
-                  className={`w-4 h-4 transition-transform ${
-                    expandedRecommendations[index] ? "rotate-180" : ""
-                  }`}
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M19 9l-7 7-7-7'
-                  />
-                </svg>
-              </button>
+              {/* Remove or comment out the ShowRecommendations button and its related functionality */}
+              {/* <div>
+                <ShowRecommendations />
+                {expandedRecommendations[index] && (
+                  <div>
+                    {loadingStates[index] ? (
+                      <div className='flex justify-center py-4'>
+                        <Spinner />
+                      </div>
+                    ) : (
+                      <div className='space-y-4'>
+                        {aiRecommendations[index]?.map((rec, recIndex) => (
+                          <div key={recIndex} className='bg-gray-50 rounded-lg p-4'>
+                            <div className='flex justify-end mb-2'>
+                              <span className='bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded'>
+                                AI Generated
+                              </span>
+                            </div>
 
-              {expandedRecommendations[index] && (
-                <div className='mt-4'>
-                  {loadingStates[index] ? (
-                    <div className='flex justify-center'>
-                      <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600'></div>
-                    </div>
-                  ) : (
-                    <div className='space-y-4'>
-                      {aiRecommendations[index]?.map((rec, recIndex) => (
-                        <div
-                          key={recIndex}
-                          className='bg-gray-50 rounded-lg p-4'
-                        >
-                          <div className='flex justify-end mb-2'>
-                            <span className='bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded'>
-                              AI Generated
-                            </span>
+                            <h4 className='font-medium text-gray-800 mb-2'>
+                              {rec.suggestion}
+                            </h4>
+
+                            {rec.implementation && (
+                              <div className='bg-green-50 p-3 rounded-lg mt-2'>
+                                <span className='font-medium text-green-700'>
+                                  Implementation:
+                                </span>
+                                <p className='mt-1 text-green-800'>
+                                  {rec.implementation}
+                                </p>
+                              </div>
+                            )}
+
+                            {rec.expectedImpact && (
+                              <div className='bg-blue-50 p-3 rounded-lg mt-2'>
+                                <span className='font-medium text-blue-700'>
+                                  Expected Impact:
+                                </span>
+                                <p className='mt-1 text-blue-800'>
+                                  {rec.expectedImpact}
+                                </p>
+                              </div>
+                            )}
                           </div>
-
-                          <h4 className='font-medium text-gray-800 mb-2'>
-                            {rec.suggestion}
-                          </h4>
-
-                          {rec.implementation && (
-                            <div className='bg-green-50 p-3 rounded-lg mt-2'>
-                              <span className='font-medium text-green-700'>
-                                Implementation:
-                              </span>
-                              <p className='mt-1 text-green-800'>
-                                {rec.implementation}
-                              </p>
-                            </div>
-                          )}
-
-                          {rec.expectedImpact && (
-                            <div className='bg-blue-50 p-3 rounded-lg mt-2'>
-                              <span className='font-medium text-blue-700'>
-                                Expected Impact:
-                              </span>
-                              <p className='mt-1 text-blue-800'>
-                                {rec.expectedImpact}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )} */}
 
               {validationResults[issue.title] && (
                 <div
