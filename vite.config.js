@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     unlighthouse({
-      site: "http://localhost:5173",
+      site: "http://localhost:5176",
       scanner: {
         device: "desktop",
         throttle: true,
@@ -24,7 +24,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 5173,
+    port: 5176,
     proxy: {
       "/api": {
         target: "http://localhost:3001",

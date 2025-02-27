@@ -13,11 +13,7 @@ const DEBUG = process.env.DEBUG === "true";
 // Configure CORS
 app.use(
   cors({
-    origin: [
-      "http://localhost:3001",
-      "http://localhost:5173",
-      process.env.FRONTEND_URL,
-    ].filter(Boolean),
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );

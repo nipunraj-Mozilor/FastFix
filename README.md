@@ -17,11 +17,16 @@ FastFix is an intelligent code analysis and automated fix suggestion tool that c
 ```env
 VITE_OPENAI_API_KEY=your_openai_api_key
 # API URL
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3000 
 VITE_SUPABASE_URL=https://your-supabase-url.supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
+# Note: To get your Supabase credentials:
+# 1. Create a project at https://supabase.com
+# 2. Go to Project Settings > API
+# 3. Copy the Project URL as VITE_SUPABASE_URL
+# 4. Copy the anon/public key as VITE_SUPABASE_ANON_KEY
 ### Backend (backend/.env)
 
 ```env
